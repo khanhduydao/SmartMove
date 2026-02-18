@@ -19,6 +19,10 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mainClass>com.smartmove.Main</mainClass>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+		<sonar.projectKey>smartmove-lab</sonar.projectKey>
+		<sonar.projectName>SmartMove</sonar.projectName>
+
     </properties>
 
     <dependencies>
@@ -53,6 +57,11 @@
                 </executions>
             </plugin>
 
+			<plugin>            
+    			<groupId>org.sonarsource.scanner.maven</groupId>
+    			<artifactId>sonar-maven-plugin</artifactId>
+   				 <version>3.9.1.2184</version>
+			</plugin>
             <!-- Compile -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
