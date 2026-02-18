@@ -54,13 +54,13 @@ public class DataSeeder {
 
         // ─── Rome fleet ───────────────────────────────────────────────────
         vehicleRepo.put(new Bicycle("ROM-B001", rome,
-                new GeoCoordinate(41.9028, 12.4964), 92));
+                new GeoCoordinate(41.9300, 12.5200), 92));
         vehicleRepo.put(new ElectricScooter("ROM-ES001", rome,
-                new GeoCoordinate(41.8902, 12.4922), 55));
+                new GeoCoordinate(41.9350, 12.5150), 55));
         vehicleRepo.put(new ElectricScooter("ROM-ES002", rome,
-                new GeoCoordinate(41.9050, 12.4900), 70));
+                new GeoCoordinate(41.9400, 12.5100), 70));
         vehicleRepo.put(new Moped("ROM-M001", rome,
-                new GeoCoordinate(41.9100, 12.5000), 80));
+                new GeoCoordinate(41.9450, 12.5050), 80));
 
         // Save all vehicles
         vehicleRepo.saveAll();
