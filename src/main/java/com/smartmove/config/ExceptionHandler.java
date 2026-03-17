@@ -1,6 +1,6 @@
 package com.smartmove.config;
 
-import com.smartmove.config.LoggerFactory;
+
 import java.util.logging.*;
 
 /**

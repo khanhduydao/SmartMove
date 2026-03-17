@@ -16,20 +16,16 @@ import java.util.List;
 public class LondonPolicy implements CityPolicy {
     private static final Logger logger = LoggerFactory.getLogger(LondonPolicy.class);
 
-    // Simplified London congestion/pedestrian zones
     private static final List<Zone> CONGESTION_ZONES = new ArrayList<>();
     private static final List<Zone> MANDATORY_PARKING_ZONES = new ArrayList<>();
 
     static {
-        // Central London congestion zone (simplified center)
         CONGESTION_ZONES.add(new Zone("LON_CONGESTION_CENTRAL",
                 new GeoCoordinate(51.5155, -0.1168), 2500, true));
 
-        // Pedestrian zone near Westminster
         CONGESTION_ZONES.add(new Zone("LON_PEDESTRIAN_WESTMINSTER",
                 new GeoCoordinate(51.5010, -0.1247), 500, true));
 
-        // Example mandatory parking bays
         MANDATORY_PARKING_ZONES.add(new Zone("LON_PARK_1",
                 new GeoCoordinate(51.5074, -0.1278), 100, false));
         MANDATORY_PARKING_ZONES.add(new Zone("LON_PARK_2",
@@ -43,21 +39,18 @@ public class LondonPolicy implements CityPolicy {
             throw new PolicyViolationException(
                     "London policy: battery too low to start rental (" + v.getBatteryPercent() + "%)");
         }
-        logger.info("[LondonPolicy] Pre-unlock check passed for vehicle %s".formatted(v.getId()));
+        logger.info(() -> "[LondonPolicy] Pre-unlock check passed for vehicle " + v.getId());
     }
 
     @Override
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
-        double surcharge = 0.0;
-        // London applies congestion charge at end of every trip
-        surcharge += LONDON_CONGESTION_CHARGE;
-        logger.info(String.format("[LondonPolicy] Applying congestion charge: £%.2f%n", LONDON_CONGESTION_CHARGE));
+        double surcharge = LONDON_CONGESTION_CHARGE;
+        logger.info(() -> String.format("[LondonPolicy] Applying congestion charge: £%.2f", LONDON_CONGESTION_CHARGE));
         return surcharge;
     }
 
     @Override
     public boolean validateTransition(Vehicle v, VehicleState to) throws PolicyViolationException {
-        // London: vehicles going into IN_USE must have at least 15% battery
         if (to == VehicleState.IN_USE && v.getBatteryPercent() < LONDON_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
                     "London policy: cannot start rental, battery at " + v.getBatteryPercent() + "% (minimum 15%)");
@@ -69,10 +62,9 @@ public class LondonPolicy implements CityPolicy {
     public boolean isAllowed(Vehicle v, GeoCoordinate gps) throws PolicyViolationException {
         for (Zone zone : CONGESTION_ZONES) {
             if (zone.isRestricted() && zone.contains(gps)) {
-                logger.info("[LondonPolicy] Vehicle %s".formatted(v.getId())
+                logger.info(() -> "[LondonPolicy] Vehicle " + v.getId()
                         + " in congestion zone " + zone.getZoneId()
                         + " — congestion charge will apply.");
-                // Not a hard block, but flag it (charge applied at end of trip)
             }
         }
         return true;

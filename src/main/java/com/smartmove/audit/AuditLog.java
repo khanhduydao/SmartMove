@@ -27,14 +27,12 @@ public class AuditLog {
 
     public void append(AuditEntry entry) throws AuditWriteException {
         synchronized (writeLock) {
-            // Try to write to file first; rollback if it fails
             boolean writeSuccess = writeEntryToFile(entry);
             if (!writeSuccess) {
                 throw new AuditWriteException(
                         "Failed to persist audit entry seq=" + entry.getSeqId()
                                 + ". In-memory state NOT updated to maintain consistency.");
             }
-            // Only add to in-memory log after a successful file write
             inMemoryLog.add(entry);
         }
     }
@@ -48,28 +46,21 @@ public class AuditLog {
                 eventType.getEventName(), payload, prevChecksum);
     }
 
-    /**
-     * Verifies the integrity of the entire audit chain.
-     * Returns true if no tampering is detected.
-     */
     public boolean verifyChain() {
         synchronized (writeLock) {
             String prevChecksum = GENESIS_CHECKSUM;
             for (AuditEntry entry : inMemoryLog) {
                 if (!entry.verifyIntegrity(prevChecksum)) {
-                    logger.severe("[AuditLog] INTEGRITY VIOLATION at seq=%s".formatted(entry.getSeqId()));
+                    logger.severe(() -> "[AuditLog] INTEGRITY VIOLATION at seq=" + entry.getSeqId());
                     return false;
                 }
                 prevChecksum = entry.getChecksum();
             }
-            logger.info("[AuditLog] Chain integrity verified. Entries: %s".formatted(inMemoryLog.size()));
+            logger.info(() -> "[AuditLog] Chain integrity verified. Entries: " + inMemoryLog.size());
             return true;
         }
     }
 
-    /**
-     * Returns the last known stable snapshot ID (last successfully written seq).
-     */
     public long getLastStableSnapshotId() {
         synchronized (writeLock) {
             if (inMemoryLog.isEmpty()) return 0L;
@@ -85,9 +76,9 @@ public class AuditLog {
 
     public void printLog() {
         synchronized (writeLock) {
-            logger.info("=== AUDIT LOG (%s".formatted(inMemoryLog.size()) + " entries) ===");
+            logger.info(() -> "=== AUDIT LOG (" + inMemoryLog.size() + " entries) ===");
             for (AuditEntry e : inMemoryLog) {
-                logger.info(String.format("  [%3d] %s | %s | %s | checksum=%s%n",
+                logger.info(() -> String.format("  [%3d] %s | %s | %s | checksum=%s%n",
                         e.getSeqId(), e.getTimestamp(), e.getEventType(),
                         e.getPayload(), e.getChecksum().substring(0, 8)));
             }
@@ -114,7 +105,7 @@ public class AuditLog {
             }
             return true;
         } catch (IOException e) {
-            logger.severe("[AuditLog] Write failed: %s".formatted(e.getMessage()));
+            logger.severe(() -> "[AuditLog] Write failed: " + e.getMessage());
             return false;
         }
     }
@@ -140,12 +131,13 @@ public class AuditLog {
                         sequenceCounter.set(entry.getSeqId());
                     }
                 } catch (Exception e) {
-                    logger.severe("[AuditLog] Skipping malformed line: %s".formatted(line));
+                    final String malformedLine = line;
+                    logger.severe(() -> "[AuditLog] Skipping malformed line: " + malformedLine);
                 }
             }
-            logger.info("[AuditLog] Loaded %s".formatted(inMemoryLog.size()) + " entries from file.");
+            logger.info(() -> "[AuditLog] Loaded " + inMemoryLog.size() + " entries from file.");
         } catch (IOException e) {
-            logger.severe("[AuditLog] Failed to load log: %s".formatted(e.getMessage()));
+            logger.severe(() -> "[AuditLog] Failed to load log: " + e.getMessage());
         }
     }
 }

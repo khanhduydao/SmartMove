@@ -70,8 +70,10 @@ public class DataSeeder {
         // Save all vehicles
         vehicleRepo.saveAll();
 
-        logger.info("[DataSeeder] Seeded "
-                + vehicleRepo.getAll().size() + " vehicles and "
-                + users.size() + " users.");
+      
+logger.info(() -> "[DataSeeder] Seeded "
+        + vehicleRepo.getAll().size() + " vehicles and "
+        + users.size() + " users.");
+
     }
 }

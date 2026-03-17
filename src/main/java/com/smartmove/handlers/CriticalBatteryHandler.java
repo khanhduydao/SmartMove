@@ -20,7 +20,7 @@ public class CriticalBatteryHandler implements TelemetryEventHandler {
     
     @Override
     public void handle(Vehicle vehicle) {
-        logger.severe(String.format("[CriticalBatteryHandler] Vehicle %s at %d%% - emergency action%n",
+        logger.severe(() -> String.format("[CriticalBatteryHandler] Vehicle %s at %d%% - emergency action%n",
                 vehicle.getId(), vehicle.getBatteryPercent()));
         
         if (vehicle.getState() == VehicleState.IN_USE) {

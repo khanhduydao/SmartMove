@@ -20,13 +20,11 @@ public class MilanPolicy implements CityPolicy {
     private static final Zone CITY_CENTER_ZONE;
 
     static {
-        // ZTL (Zona a Traffico Limitato) areas in Milan
         RESTRICTED_ZONES.add(new Zone("MIL_ZTL_CENTRO",
                 new GeoCoordinate(45.4642, 9.1900), 1200, true));
         RESTRICTED_ZONES.add(new Zone("MIL_PROTECTED_PARCO",
                 new GeoCoordinate(45.4773, 9.1878), 600, true));
 
-        // City center zone for higher pricing
         CITY_CENTER_ZONE = new Zone("MIL_CITY_CENTER",
                 new GeoCoordinate(45.4654, 9.1866), 2000, false);
     }
@@ -34,14 +32,13 @@ public class MilanPolicy implements CityPolicy {
     @Override
     public void beforeUnlock(Vehicle v, TelemetryData telemetryData, Rental rental)
             throws PolicyViolationException {
-        // Milan: Mopeds require helmet sensor confirmation before unlocking
         if (v instanceof Moped) {
             if (telemetryData == null || !telemetryData.isHelmetPresent()) {
                 throw new PolicyViolationException(
                         "Milan policy: Helmet not detected! Moped " + v.getId()
                                 + " cannot be unlocked without confirmed helmet presence.");
             }
-            logger.info("[MilanPolicy] Helmet confirmed for Moped %s".formatted(v.getId()));
+            logger.info(() -> "[MilanPolicy] Helmet confirmed for Moped " + v.getId());
         }
         if (v.getBatteryPercent() < MILAN_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
@@ -52,8 +49,7 @@ public class MilanPolicy implements CityPolicy {
     @Override
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
         double surcharge = 0.0;
-        // No city-specific surcharge by default, but city center adds extra
-        logger.info(String.format("[MilanPolicy] Base trip cost: %.2f%n", baseAmount));
+        logger.info(() -> String.format("[MilanPolicy] Base trip cost: %.2f", baseAmount));
         return surcharge;
     }
 
