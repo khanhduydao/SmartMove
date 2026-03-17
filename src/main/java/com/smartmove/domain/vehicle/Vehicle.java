@@ -117,7 +117,7 @@ public abstract class Vehicle {
     @Override
     public String toString() {
         return String.format("%s[id=%s, state=%s, bat=%d%%, temp=%.1f°C, city=%s]",
-                getType(), id, state, batteryPercent, temperatureC, city.getName());
+                getType(), id, state.get(), batteryPercent.get(), temperatureC.get(), city.getName());
     }
 
     @Override
