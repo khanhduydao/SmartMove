@@ -1,5 +1,6 @@
 package com.smartmove.policy;
 
+import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
 import com.smartmove.domain.TelemetryData;
@@ -11,8 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LondonPolicy implements CityPolicy {
-
-    private static final double CONGESTION_CHARGE = 3.50;
 
     // Simplified London congestion/pedestrian zones
     private static final List<Zone> CONGESTION_ZONES = new ArrayList<>();
@@ -48,15 +47,15 @@ public class LondonPolicy implements CityPolicy {
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
         double surcharge = 0.0;
         // London applies congestion charge at end of every trip
-        surcharge += CONGESTION_CHARGE;
-        System.out.printf("[LondonPolicy] Applying congestion charge: £%.2f%n", CONGESTION_CHARGE);
+        surcharge += LONDON_CONGESTION_CHARGE;
+        System.out.printf("[LondonPolicy] Applying congestion charge: £%.2f%n", LONDON_CONGESTION_CHARGE);
         return surcharge;
     }
 
     @Override
     public boolean validateTransition(Vehicle v, VehicleState to) throws PolicyViolationException {
         // London: vehicles going into IN_USE must have at least 15% battery
-        if (to == VehicleState.IN_USE && v.getBatteryPercent() < 15) {
+        if (to == VehicleState.IN_USE && v.getBatteryPercent() < LONDON_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
                     "London policy: cannot start rental, battery at " + v.getBatteryPercent() + "% (minimum 15%)");
         }

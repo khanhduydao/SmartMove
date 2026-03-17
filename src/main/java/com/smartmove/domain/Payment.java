@@ -1,6 +1,11 @@
 package com.smartmove.domain;
 
-public class Payment {
+import com.smartmove.config.DomainValidator;
+
+/**
+ * Payment entity for rental transactions.
+ */
+public final class Payment {
     private final String id;
     private final String rentalId;
     private final double baseAmount;
@@ -9,6 +14,12 @@ public class Payment {
     private final String description;
 
     public Payment(String id, String rentalId, double baseAmount, double surcharges, String description) {
+        DomainValidator.requireNonNull(id, "Payment ID cannot be null");
+        DomainValidator.requireNonNull(rentalId, "Rental ID cannot be null");
+        DomainValidator.validateAmount(baseAmount);
+        DomainValidator.validateAmount(surcharges);
+        DomainValidator.requireNonNull(description, "Description cannot be null");
+        
         this.id = id;
         this.rentalId = rentalId;
         this.baseAmount = baseAmount;

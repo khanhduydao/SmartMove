@@ -1,5 +1,6 @@
 package com.smartmove.persistence;
 
+import com.smartmove.constants.SmartMoveConstants;
 import com.smartmove.domain.City;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.vehicle.*;
@@ -56,7 +57,7 @@ public class VehicleRepository {
     // Inner CSV storage class
     private static class VehicleCsvStorage extends CsvFileStorage<Vehicle> {
         VehicleCsvStorage() {
-            super("data/vehicles.csv",
+            super(SmartMoveConstants.VEHICLES_CSV,
                     "id,type,state,batteryPercent,temperatureC,lat,lon,city");
         }
 

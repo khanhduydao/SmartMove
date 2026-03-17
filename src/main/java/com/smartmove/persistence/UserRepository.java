@@ -1,5 +1,6 @@
 package com.smartmove.persistence;
 
+import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.Payment;
 import com.smartmove.domain.Rental;
 import com.smartmove.domain.User;
@@ -10,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // ─── USER REPOSITORY ────────────────────────────────────────────────────────
 
 class UserCsvStorage extends CsvFileStorage<User> {
-    UserCsvStorage() { super("data/users.csv", "id,name"); }
+    UserCsvStorage() { super(USERS_CSV, "id,name"); }
 
     @Override
     protected User fromCsv(String line) {
@@ -49,7 +50,7 @@ public class UserRepository {
 // ─── RENTAL REPOSITORY ──────────────────────────────────────────────────────
 
 class RentalCsvStorage extends CsvFileStorage<Rental> {
-    RentalCsvStorage() { super("data/rentals.csv", "id,userId,vehicleId,startTime,endTime,active"); }
+    RentalCsvStorage() { super(RENTALS_CSV, "id,userId,vehicleId,startTime,endTime,active"); }
 
     @Override
     protected Rental fromCsv(String line) {
@@ -82,7 +83,7 @@ class RentalCsvStorage extends CsvFileStorage<Rental> {
 
 class PaymentCsvStorage extends CsvFileStorage<Payment> {
     PaymentCsvStorage() {
-        super("data/payments.csv", "id,rentalId,baseAmount,surcharges,total,description");
+        super(PAYMENTS_CSV, "id,rentalId,baseAmount,surcharges,total,description");
     }
 
     @Override

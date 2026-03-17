@@ -3,7 +3,10 @@ package com.smartmove.domain.vehicle;
 import com.smartmove.domain.City;
 import com.smartmove.domain.GeoCoordinate;
 
-public class Bicycle extends Vehicle {
+/**
+ * Bicycle vehicle type.
+ */
+public final class Bicycle extends Vehicle {
     public Bicycle(String id, City city, GeoCoordinate location, int batteryPercent) {
         super(id, city, location, batteryPercent);
     }

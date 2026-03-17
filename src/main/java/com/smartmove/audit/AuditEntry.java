@@ -1,5 +1,7 @@
 package com.smartmove.audit;
 
+import com.smartmove.constants.SmartMoveConstants;
+
 public class AuditEntry {
     private final long seqId;
     private final String timestamp;
@@ -33,7 +35,7 @@ public class AuditEntry {
                                            String eventType, String payload, String prev) {
         String data = seqId + "|" + timestamp + "|" + eventType + "|" + payload + "|" + prev;
         // Simple but deterministic checksum using djb2 hash
-        long hash = 5381L;
+        long hash = SmartMoveConstants.CHECKSUM_HASH_SEED;
         for (char c : data.toCharArray()) {
             hash = ((hash << 5) + hash) + c;
         }

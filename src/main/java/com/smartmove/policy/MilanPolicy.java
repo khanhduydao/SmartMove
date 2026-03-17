@@ -1,5 +1,6 @@
 package com.smartmove.policy;
 
+import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
 import com.smartmove.domain.TelemetryData;
@@ -12,9 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MilanPolicy implements CityPolicy {
-
-    private static final double CITY_CENTER_SURCHARGE = 1.50;
-
     private static final List<Zone> RESTRICTED_ZONES = new ArrayList<>();
     private static final Zone CITY_CENTER_ZONE;
 
@@ -42,7 +40,7 @@ public class MilanPolicy implements CityPolicy {
             }
             System.out.println("[MilanPolicy] Helmet confirmed for Moped " + v.getId());
         }
-        if (v.getBatteryPercent() < 15) {
+        if (v.getBatteryPercent() < MILAN_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
                     "Milan policy: battery too low (" + v.getBatteryPercent() + "%)");
         }
@@ -85,5 +83,5 @@ public class MilanPolicy implements CityPolicy {
         return CITY_CENTER_ZONE.contains(gps);
     }
 
-    public double getCityCenterSurcharge() { return CITY_CENTER_SURCHARGE; }
+    public double getCityCenterSurcharge() { return MILAN_CITY_CENTER_SURCHARGE; }
 }

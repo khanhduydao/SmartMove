@@ -1,5 +1,7 @@
 package com.smartmove.audit;
 
+import com.smartmove.constants.SmartMoveConstants;
+
 import java.io.*;
 import java.nio.file.*;
 import java.time.Instant;
@@ -8,9 +10,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AuditLog {
-    private static final String LOG_FILE = "data/audit_log.csv";
+    private static final String LOG_FILE = SmartMoveConstants.AUDIT_LOG_CSV;
     private static final String HEADER = "seqId,timestamp,eventType,payload,prevChecksum,checksum";
-    private static final String GENESIS_CHECKSUM = "0000000000000000";
+    private static final String GENESIS_CHECKSUM = SmartMoveConstants.GENESIS_CHECKSUM;
 
     private final List<AuditEntry> inMemoryLog = new ArrayList<>();
     private final AtomicLong sequenceCounter = new AtomicLong(0);
@@ -29,17 +31,18 @@ public class AuditLog {
                         "Failed to persist audit entry seq=" + entry.getSeqId()
                                 + ". In-memory state NOT updated to maintain consistency.");
             }
-            // Only add to in-memory log after successful file write
+            // Only add to in-memory log after a successful file write
             inMemoryLog.add(entry);
         }
     }
 
-    public AuditEntry createEntry(String eventType, String payload) {
+    public AuditEntry createEntry(AuditEventType eventType, String payload) {
         long seq = sequenceCounter.incrementAndGet();
         String prevChecksum = inMemoryLog.isEmpty()
                 ? GENESIS_CHECKSUM
                 : inMemoryLog.get(inMemoryLog.size() - 1).getChecksum();
-        return new AuditEntry(seq, Instant.now().toString(), eventType, payload, prevChecksum);
+        return new AuditEntry(seq, Instant.now().toString(),
+                eventType.getEventName(), payload, prevChecksum);
     }
 
     /**

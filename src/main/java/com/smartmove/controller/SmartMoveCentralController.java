@@ -2,13 +2,16 @@ package com.smartmove.controller;
 
 import com.smartmove.audit.AuditEntry;
 import com.smartmove.audit.AuditLog;
-import com.smartmove.audit.AuditWriteException;
 import com.smartmove.domain.*;
 import com.smartmove.domain.vehicle.*;
 import com.smartmove.persistence.*;
 import com.smartmove.policy.*;
 import com.smartmove.telemetry.TelemetryMonitor;
-import com.smartmove.telemetry.TelemetryMonitor.TelemetryEvent;
+import static com.smartmove.constants.SmartMoveConstants.*;
+import com.smartmove.events.*;
+import com.smartmove.handlers.*;
+import com.smartmove.config.*;
+import com.smartmove.audit.AuditEventType;
 
 import java.time.Instant;
 import java.util.*;
@@ -47,14 +50,14 @@ public class SmartMoveCentralController {
     private final ConcurrentHashMap<String, Object> vehicleLocks = new ConcurrentHashMap<>();
 
     // ─── ID generation ────────────────────────────────────────────────────
-    private final AtomicLong rentalIdSeq  = new AtomicLong(1000);
-    private final AtomicLong paymentIdSeq = new AtomicLong(1000);
+    private final AtomicLong rentalIdSeq  = new AtomicLong(RENTAL_ID_SEED);
+    private final AtomicLong paymentIdSeq = new AtomicLong(PAYMENT_ID_SEED);
 
     // ─── Rollback snapshot: vehicleId → last known stable state ──────────
     private final ConcurrentHashMap<String, VehicleState> stateSnapshots = new ConcurrentHashMap<>();
 
     // Reference to last stable audit snapshot ID (used for rollback description)
-    private volatile long lastStableSnapshotId = 0L;
+    private volatile long lastStableSnapshotId = AUDIT_SEQ_SEED;
 
     public SmartMoveCentralController() {
         this.vehicleRepo  = new VehicleRepository();
@@ -63,11 +66,12 @@ public class SmartMoveCentralController {
         this.paymentRepo  = new PaymentRepository();
         this.auditLog     = new AuditLog();
 
-        // Initialize per-vehicle locks for all loaded vehicles
-        vehicleRepo.getAll().keySet().forEach(id -> vehicleLocks.put(id, new Object()));
+        VehicleStateManager stateManager = new VehicleStateManagerImpl();
+        RentalTerminator rentalTerminator = new RentalTerminatorImpl(stateManager);
 
-        // Set up telemetry monitor with callback to this controller
-        this.telemetryMonitor = new TelemetryMonitor(this::handleTelemetryEvent);
+        registerEventHandlers(stateManager, rentalTerminator);
+
+        this.telemetryMonitor = new TelemetryMonitor();
         this.telemetryThread  = new Thread(telemetryMonitor, "TelemetryMonitor");
         this.telemetryThread.setDaemon(true);
         this.telemetryThread.start();
@@ -93,7 +97,7 @@ public class SmartMoveCentralController {
                 throw new SmartMoveException("Vehicle " + vehicleId + " is not available (state: " + v.getState() + ")");
             }
 
-            // Take snapshot before state change
+            // Take a snapshot before state change
             stateSnapshots.put(vehicleId, v.getState());
 
             v.transitionTo(VehicleState.RESERVED);
@@ -104,7 +108,7 @@ public class SmartMoveCentralController {
             try {
                 rentalRepo.save(rental);
                 vehicleRepo.save(v);
-                writeAudit("VEHICLE_RESERVED",
+                writeAudit(AuditEventType.VEHICLE_RESERVED,
                         "vehicle=" + vehicleId + " user=" + userId + " rental=" + rentalId);
                 lastStableSnapshotId = auditLog.getLastStableSnapshotId();
             } catch (Exception e) {
@@ -154,7 +158,7 @@ public class SmartMoveCentralController {
 
             try {
                 vehicleRepo.save(v);
-                writeAudit("RENTAL_STARTED",
+                writeAudit(AuditEventType.RENTAL_STARTED,
                         "vehicle=" + vehicleId + " rental=" + rentalId
                                 + " city=" + v.getCity().getName());
                 lastStableSnapshotId = auditLog.getLastStableSnapshotId();
@@ -196,7 +200,7 @@ public class SmartMoveCentralController {
             CityPolicy policy = PolicyFactory.getPolicy(v.getCity().getName());
 
             // Calculate base fare (simplified: €0.30/min, assume 20-minute trip)
-            double baseAmount = 6.00;
+            double baseAmount = BASE_RENTAL_AMOUNT;
             double surcharge = 0.0;
             String surchargeDesc = "";
 
@@ -220,10 +224,10 @@ public class SmartMoveCentralController {
                 rentalRepo.save(rental);
                 paymentRepo.save(payment);
                 vehicleRepo.save(v);
-                writeAudit("RENTAL_ENDED",
+                writeAudit(AuditEventType.RENTAL_ENDED,
                         "vehicle=" + vehicleId + " rental=" + rentalId
                                 + " total=" + String.format("%.2f", payment.getTotal()));
-                writeAudit("PAYMENT_PROCESSED",
+                writeAudit(AuditEventType.PAYMENT_PROCESSED,
                         "payment=" + paymentId + " rental=" + rentalId
                                 + " base=" + String.format("%.2f", baseAmount)
                                 + " surcharge=" + String.format("%.2f", surcharge)
@@ -248,7 +252,7 @@ public class SmartMoveCentralController {
      * Accepts a new telemetry data point for a vehicle and submits it
      * to the background monitor queue.
      */
-    public void processTelemetry(String vehicleId, String timestamp, TelemetryData t) {
+    public void processTelemetry(String vehicleId, TelemetryData t) {
         vehicleRepo.findById(vehicleId).ifPresent(v -> {
             telemetryMonitor.submitTelemetry(v, t);
         });
@@ -292,7 +296,7 @@ public class SmartMoveCentralController {
 
     /**
      * Manually rolls back the in-memory vehicle state to its last stable snapshot.
-     * Called when a persistence write fails, to keep in-memory state
+     * Called when persistence write fails, to keep in-memory state
      * consistent with the persisted audit log.
      */
     public void rollback(String lastStableSnapshotId) {
@@ -340,68 +344,44 @@ public class SmartMoveCentralController {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // 8.  TELEMETRY EVENT HANDLER (callback from TelemetryMonitor)
+    // 8.  EVENT HANDLERS
     // ─────────────────────────────────────────────────────────────────────
 
-    private void handleTelemetryEvent(Vehicle v, TelemetryEvent event) {
-        String vehicleId = v.getId();
-        Object lock = getVehicleLock(vehicleId);
+    private void registerEventHandlers(VehicleStateManager stateManager,
+                                       RentalTerminator rentalTerminator) {
+        EventBus bus = EventBus.getInstance();
 
-        synchronized (lock) {
-            switch (event) {
-                case CRITICAL_TEMPERATURE:
-                    handleCriticalAlert(v, "CRITICAL_TEMP",
-                            "Temperature exceeded 60°C — emergency lock triggered");
-                    triggerEmergencyLock(v, "Critical temperature: " + v.getTemperatureC() + "°C");
-                    break;
+        // Critical temperature handler
+        bus.subscribe(CriticalTemperatureEvent.class, event -> {
+            new CriticalTemperatureHandler(stateManager).handle(event.getVehicle());
+        });
 
-                case HIGH_TEMPERATURE_WARNING:
-                    System.out.printf("[Controller] High temp warning for %s (%.1f°C) — throttling speed%n",
-                            vehicleId, v.getTemperatureC());
-                    writeAudit("VEHICLE_THROTTLED", "vehicle=" + vehicleId
-                            + " temp=" + v.getTemperatureC() + "C");
-                    break;
+        // Critical battery handler
+        bus.subscribe(CriticalBatteryEvent.class, event -> {
+            new CriticalBatteryHandler(stateManager, rentalTerminator).handle(event.getVehicle());
+        });
 
-                case CRITICAL_BATTERY:
-                    if (v.getState() == VehicleState.IN_USE) {
-                        System.out.println("[Controller] Critical battery on " + vehicleId
-                                + " — initiating emergency rental termination");
-                        // Find and auto-terminate the active rental
-                        Optional<Rental> activeRental = rentalRepo.findActiveByVehicleId(vehicleId);
-                        activeRental.ifPresent(r -> {
-                            try {
-                                endRental(r.getId(), vehicleId);
-                                writeAudit("EMERGENCY_RENTAL_END",
-                                        "vehicle=" + vehicleId + " reason=critical_battery");
-                            } catch (SmartMoveException e) {
-                                System.err.println("[Controller] Emergency end failed: " + e.getMessage());
-                                triggerEmergencyLock(v, "Critical battery, emergency end failed");
-                            }
-                        });
-                    } else {
-                        sendToMaintenance(v, "Critical battery: " + v.getBatteryPercent() + "%");
-                    }
-                    break;
+        // Theft alarm handler
+        bus.subscribe(TheftAlarmEvent.class, event -> {
+            new TheftAlarmHandler(stateManager).handle(event.getVehicle());
+        });
 
-                case LOW_BATTERY_WARNING:
-                    writeAudit("LOW_BATTERY_WARNING", "vehicle=" + vehicleId
-                            + " battery=" + v.getBatteryPercent() + "%");
-                    break;
+        // Warning handlers
+        bus.subscribe(HighTemperatureWarningEvent.class, event -> {
+            new WarningEventHandler().handle(event.getVehicle());
+        });
 
-                case THEFT_ALARM:
-                    handleCriticalAlert(v, "THEFT_ALARM",
-                            "Vehicle moved without active rental — emergency lock triggered");
-                    triggerEmergencyLock(v, "Theft alarm: movement without rental");
-                    break;
-            }
-        }
+        bus.subscribe(LowBatteryWarningEvent.class, event -> {
+            new WarningEventHandler().handle(event.getVehicle());
+        });
     }
+
 
     private void triggerEmergencyLock(Vehicle v, String reason) {
         boolean transitioned = v.transitionTo(VehicleState.EMERGENCY_LOCK);
         if (transitioned) {
             vehicleRepo.save(v);
-            writeAudit("EMERGENCY_LOCK", "vehicle=" + v.getId() + " reason=" + reason);
+            writeAudit(AuditEventType.EMERGENCY_LOCK, "vehicle=" + v.getId() + " reason=" + reason);
             System.err.printf("[Controller] EMERGENCY LOCK: vehicle=%s reason=%s%n", v.getId(), reason);
         }
     }
@@ -410,7 +390,7 @@ public class SmartMoveCentralController {
         boolean transitioned = v.transitionTo(VehicleState.MAINTENANCE);
         if (transitioned) {
             vehicleRepo.save(v);
-            writeAudit("VEHICLE_MAINTENANCE", "vehicle=" + v.getId() + " reason=" + reason);
+            writeAudit(AuditEventType.VEHICLE_MAINTENANCE, "vehicle=" + v.getId() + " reason=" + reason);
             System.out.printf("[Controller] Vehicle %s sent to MAINTENANCE: %s%n", v.getId(), reason);
         }
     }
@@ -444,13 +424,19 @@ public class SmartMoveCentralController {
     // 10. AUDIT HELPERS
     // ─────────────────────────────────────────────────────────────────────
 
-    private void writeAudit(String eventType, String payload) {
+    private void writeAudit(AuditEventType eventType, String payload) {
         try {
             AuditEntry entry = auditLog.createEntry(eventType, payload);
-            auditLog.append(entry);
-        } catch (AuditWriteException e) {
-            System.err.println("[Controller] AUDIT WRITE FAILED: " + e.getMessage());
-            // Critical: audit write failure triggers rollback
+
+            ExceptionHandler.handlePersistenceOperation(
+                    "audit write " + eventType,
+                    () -> {
+                        auditLog.append(entry);
+                        return null;
+                    },
+                    3  // max retries
+            );
+        } catch (Exception e) {
             rollback(String.valueOf(lastStableSnapshotId));
         }
     }
@@ -498,6 +484,40 @@ public class SmartMoveCentralController {
                 v.getTemperatureC(),
                 v instanceof Moped && ((Moped) v).isHelmetDetected()
         );
+    }
+
+    private class VehicleStateManagerImpl implements VehicleStateManager {
+        @Override
+        public void emergencyLock(Vehicle vehicle, String reason) {
+            triggerEmergencyLock(vehicle, reason);
+        }
+
+        @Override
+        public void sendToMaintenance(Vehicle vehicle, String reason) {
+            SmartMoveCentralController.this.sendToMaintenance(vehicle, reason);
+        }
+    }
+
+    private class RentalTerminatorImpl implements RentalTerminator {
+        private final VehicleStateManager stateManager;
+
+        public RentalTerminatorImpl(VehicleStateManager stateManager) {
+            this.stateManager = stateManager;
+        }
+
+        @Override
+        public void terminateEmergency(Vehicle vehicle, String reason) {
+            Optional<Rental> activeRental = rentalRepo.findActiveByVehicleId(vehicle.getId());
+            activeRental.ifPresent(r -> {
+                try {
+                    endRental(r.getId(), vehicle.getId());
+                    writeAudit(AuditEventType.EMERGENCY_RENTAL_END,
+                            "vehicle=" + vehicle.getId() + " reason=" + reason);
+                } catch (SmartMoveException e) {
+                    stateManager.emergencyLock(vehicle, "Emergency end failed: " + e.getMessage());
+                }
+            });
+        }
     }
 
     // ─── Getters for testing / dashboard ─────────────────────────────────

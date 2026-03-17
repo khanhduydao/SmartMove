@@ -3,10 +3,14 @@ package com.smartmove.domain.vehicle;
 import com.smartmove.domain.City;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.TelemetryData;
+import com.smartmove.config.DomainValidator;
+import com.smartmove.events.EventBus;
+import com.smartmove.events.VehicleStateChangedEvent;
 
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * Base class for all vehicle types.
+ * Refactored to publish events on state changes (Event-Driven Architecture).
+ */
 public abstract class Vehicle {
     protected final String id;
     protected volatile VehicleState state;
@@ -14,12 +18,16 @@ public abstract class Vehicle {
     protected volatile double temperatureC;
     protected volatile GeoCoordinate location;
     protected final City city;
-    protected final Map<String, Object> vehicleLocks = new HashMap<>();
 
     // Lock object for thread-safe state transitions
     private final Object stateLock = new Object();
 
     public Vehicle(String id, City city, GeoCoordinate location, int batteryPercent) {
+        DomainValidator.validateVehicleId(id);
+        DomainValidator.requireNonNull(city, "City cannot be null");
+        DomainValidator.requireNonNull(location, "Location cannot be null");
+        DomainValidator.validateBatteryPercent(batteryPercent);
+        
         this.id = id;
         this.state = VehicleState.AVAILABLE;
         this.city = city;
@@ -30,40 +38,66 @@ public abstract class Vehicle {
 
     public abstract String getType();
 
-    // Thread-safe state transition
+    /**
+     * Thread-safe state transition with event publishing.
+     * Returns true if transition was successful.
+     */
     public boolean transitionTo(VehicleState newState) {
         synchronized (stateLock) {
             if (isValidTransition(this.state, newState)) {
+                VehicleState oldState = this.state;
                 this.state = newState;
+                
+                // Publish state change event (Event-Driven Architecture)
+                EventBus.getInstance().publish(
+                    new VehicleStateChangedEvent(this, oldState, newState)
+                );
+                
                 return true;
             }
             return false;
         }
     }
 
+    /**
+     * Validate if transition from one state to another is allowed.
+     * State machine validation logic.
+     */
     public boolean isValidTransition(VehicleState from, VehicleState to) {
-        switch (from) {
-            case AVAILABLE:
-                return to == VehicleState.RESERVED || to == VehicleState.MAINTENANCE
-                        || to == VehicleState.EMERGENCY_LOCK || to == VehicleState.RELOCATING;
-            case RESERVED:
-                return to == VehicleState.IN_USE || to == VehicleState.AVAILABLE
+        return switch (from) {
+            case AVAILABLE -> to == VehicleState.RESERVED 
+                           || to == VehicleState.MAINTENANCE
+                           || to == VehicleState.EMERGENCY_LOCK 
+                           || to == VehicleState.RELOCATING;
+            
+            case RESERVED -> to == VehicleState.IN_USE 
+                          || to == VehicleState.AVAILABLE
+                          || to == VehicleState.EMERGENCY_LOCK;
+            
+            case IN_USE -> to == VehicleState.AVAILABLE 
+                        || to == VehicleState.MAINTENANCE
                         || to == VehicleState.EMERGENCY_LOCK;
-            case IN_USE:
-                return to == VehicleState.AVAILABLE || to == VehicleState.MAINTENANCE
-                        || to == VehicleState.EMERGENCY_LOCK;
-            case MAINTENANCE:
-                return to == VehicleState.AVAILABLE || to == VehicleState.EMERGENCY_LOCK;
-            case EMERGENCY_LOCK:
-                return to == VehicleState.MAINTENANCE || to == VehicleState.AVAILABLE;
-            case RELOCATING:
-                return to == VehicleState.AVAILABLE || to == VehicleState.MAINTENANCE;
-            default:
-                return false;
-        }
+            
+            case MAINTENANCE -> to == VehicleState.AVAILABLE 
+                             || to == VehicleState.EMERGENCY_LOCK;
+            
+            case EMERGENCY_LOCK -> to == VehicleState.MAINTENANCE 
+                                || to == VehicleState.AVAILABLE;
+            
+            case RELOCATING -> to == VehicleState.AVAILABLE 
+                            || to == VehicleState.MAINTENANCE;
+            
+            default -> false;
+        };
     }
 
+    /**
+     * Apply telemetry data to update vehicle state.
+     * Thread-safe operation.
+     */
     public void applyTelemetry(TelemetryData t) {
+        DomainValidator.requireNonNull(t, "Telemetry data cannot be null");
+        
         synchronized (stateLock) {
             this.location = t.getGps();
             this.batteryPercent = t.getBatteryPercent();
@@ -78,12 +112,23 @@ public abstract class Vehicle {
     public double getTemperatureC() { return temperatureC; }
     public GeoCoordinate getLocation() { return location; }
     public City getCity() { return city; }
-    public Map<String, Object> getVehicleLocks() { return vehicleLocks; }
     public Object getStateLock() { return stateLock; }
 
     @Override
     public String toString() {
         return String.format("%s[id=%s, state=%s, bat=%d%%, temp=%.1f°C, city=%s]",
                 getType(), id, state, batteryPercent, temperatureC, city.getName());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Vehicle)) return false;
+        return id.equals(((Vehicle) obj).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
     }
 }

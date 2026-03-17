@@ -1,5 +1,6 @@
 package com.smartmove.policy;
 
+import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
 import com.smartmove.domain.TelemetryData;
@@ -37,7 +38,7 @@ public class RomePolicy implements CityPolicy {
     @Override
     public void beforeUnlock(Vehicle v, TelemetryData telemetryData, Rental rental)
             throws PolicyViolationException {
-        if (v.getBatteryPercent() < 15) {
+        if (v.getBatteryPercent() < ROME_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
                     "Rome policy: battery too low (" + v.getBatteryPercent() + "%)");
         }

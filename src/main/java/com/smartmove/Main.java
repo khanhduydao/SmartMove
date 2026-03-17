@@ -10,9 +10,8 @@ import java.time.Instant;
 
 /**
  * SmartMove Core Engine — Main Demonstration
- *
  * Demonstrates:
- *   1. Multi-city vehicle reservation & rental (London, Milan, Rome)
+ *   1. Multi-city vehicle reservation and rental (London, Milan, Rome)
  *   2. City-specific policy enforcement (congestion charge, helmet check, zone restrictions)
  *   3. State machine transitions with validation
  *   4. Real-time telemetry processing (critical temp, low battery, theft alarm)
@@ -23,7 +22,7 @@ import java.time.Instant;
  */
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         printBanner();
 
         // ─── 1. Seed initial data ──────────────────────────────────────────
@@ -97,7 +96,7 @@ public class Main {
         }
     }
 
-    // ─── MILAN: Moped unlock without helmet (should fail), then with helmet ───
+    // ─── MILAN: Moped unlock without a helmet (should fail), then with helmet ───
 
     private static void milanScenario(SmartMoveCentralController c) {
         try {
@@ -164,16 +163,16 @@ public class Main {
                 new GeoCoordinate(51.5100, -0.1200),
                 65, 75.0, false  // 75°C — WAY over the 60°C threshold
         );
-        c.processTelemetry("LON-ES002", Instant.now().toString(), criticalTemp);
+        c.processTelemetry("LON-ES002", criticalTemp);
 
         // Low battery warning
         System.out.println("Simulating critically low battery on ROM-B001...");
         TelemetryData lowBattery = new TelemetryData(
                 Instant.now().toString(),
                 new GeoCoordinate(41.9028, 12.4964),
-                3, 25.0, false  // 3% battery — below critical 5% threshold
+                3, 25.0, false  // 3% battery — below the critical 5% threshold
         );
-        c.processTelemetry("ROM-B001", Instant.now().toString(), lowBattery);
+        c.processTelemetry("ROM-B001", lowBattery);
 
         // Theft alarm: vehicle moves without rental
         System.out.println("Simulating theft alarm on MIL-B001 (moved 50m without rental)...");
@@ -183,7 +182,7 @@ public class Main {
                 new GeoCoordinate(45.4700, 9.1950),  // moved significantly
                 90, 22.0, false
         );
-        c.processTelemetry("MIL-B001", Instant.now().toString(), telemetry1);
+        c.processTelemetry("MIL-B001", telemetry1);
     }
 
     // ─── CONCURRENCY: Two users try to reserve the same vehicle at once ───────
@@ -249,7 +248,7 @@ public class Main {
     private static void printBanner() {
         System.out.println("╔══════════════════════════════════════════════════════════╗");
         System.out.println("║         SmartMove Core Engine — v1.0                     ║");
-        System.out.println("║  Urban Mobility Platform  |  London · Milan · Rome        ║");
+        System.out.println("║  Urban Mobility Platform  |  London · Milan · Rome       ║");
         System.out.println("╚══════════════════════════════════════════════════════════╝");
     }
 
