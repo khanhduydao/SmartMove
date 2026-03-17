@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TestConstants.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.constants</a> &gt; <span class="el_source">TestConstants.java</span></div><h1>TestConstants.java</h1><pre class="source lang-java linenums">package com.smartmove.constants;
+
+/**
+ * Test data identifiers used across test suite.
+ * Eliminates duplicate string literals in tests.
+ */
+public final class TestConstants {
+
+<span class="nc" id="L9">    private TestConstants() {</span>
+<span class="nc" id="L10">        throw new AssertionError(&quot;Cannot instantiate test constants class&quot;);</span>
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // VEHICLE IDS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    // London
+    public static final String LON_BICYCLE_001 = &quot;LON-B001&quot;;
+    public static final String LON_BICYCLE_002 = &quot;LON-B002&quot;;
+    public static final String LON_SCOOTER_001 = &quot;LON-ES001&quot;;
+    public static final String LON_SCOOTER_002 = &quot;LON-ES002&quot;;
+    public static final String LON_MOPED_001 = &quot;LON-M001&quot;;
+    
+    // Milan
+    public static final String MIL_BICYCLE_001 = &quot;MIL-B001&quot;;
+    public static final String MIL_SCOOTER_001 = &quot;MIL-ES001&quot;;
+    public static final String MIL_MOPED_001 = &quot;MIL-M001&quot;;
+    public static final String MIL_MOPED_002 = &quot;MIL-M002&quot;;
+    
+    // Rome
+    public static final String ROM_BICYCLE_001 = &quot;ROM-B001&quot;;
+    public static final String ROM_SCOOTER_001 = &quot;ROM-ES001&quot;;
+    public static final String ROM_SCOOTER_002 = &quot;ROM-ES002&quot;;
+    public static final String ROM_MOPED_001 = &quot;ROM-M001&quot;;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // USER IDS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final String USER_001 = &quot;U001&quot;;
+    public static final String USER_002 = &quot;U002&quot;;
+    public static final String USER_003 = &quot;U003&quot;;
+    public static final String USER_004 = &quot;U004&quot;;
+    public static final String USER_005 = &quot;U005&quot;;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CITY NAMES
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final String CITY_LONDON = &quot;London&quot;;
+    public static final String CITY_MILAN = &quot;Milan&quot;;
+    public static final String CITY_ROME = &quot;Rome&quot;;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

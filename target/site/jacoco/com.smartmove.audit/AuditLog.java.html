@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.audit</a> &gt; <span class="el_source">AuditLog.java</span></div><h1>AuditLog.java</h1><pre class="source lang-java linenums">package com.smartmove.audit;
+
+import com.smartmove.constants.SmartMoveConstants;
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
+
+import java.io.*;
+import java.nio.file.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class AuditLog {
+<span class="fc" id="L15">    private static final Logger logger = LoggerFactory.getLogger(AuditLog.class);</span>
+    private static final String LOG_FILE = SmartMoveConstants.AUDIT_LOG_CSV;
+    private static final String HEADER = &quot;seqId,timestamp,eventType,payload,prevChecksum,checksum&quot;;
+    private static final String GENESIS_CHECKSUM = SmartMoveConstants.GENESIS_CHECKSUM;
+
+<span class="fc" id="L20">    private final List&lt;AuditEntry&gt; inMemoryLog = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L21">    private final AtomicLong sequenceCounter = new AtomicLong(0);</span>
+<span class="fc" id="L22">    private final Object writeLock = new Object();</span>
+
+<span class="fc" id="L24">    public AuditLog() {</span>
+<span class="fc" id="L25">        loadFromFile();</span>
+<span class="fc" id="L26">    }</span>
+
+    public void append(AuditEntry entry) throws AuditWriteException {
+<span class="fc" id="L29">        synchronized (writeLock) {</span>
+<span class="fc" id="L30">            boolean writeSuccess = writeEntryToFile(entry);</span>
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">            if (!writeSuccess) {</span>
+<span class="nc" id="L32">                throw new AuditWriteException(</span>
+<span class="nc" id="L33">                        &quot;Failed to persist audit entry seq=&quot; + entry.getSeqId()</span>
+                                + &quot;. In-memory state NOT updated to maintain consistency.&quot;);
+            }
+<span class="fc" id="L36">            inMemoryLog.add(entry);</span>
+<span class="fc" id="L37">        }</span>
+<span class="fc" id="L38">    }</span>
+
+    public AuditEntry createEntry(AuditEventType eventType, String payload) {
+<span class="fc" id="L41">        long seq = sequenceCounter.incrementAndGet();</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        String prevChecksum = inMemoryLog.isEmpty()</span>
+<span class="fc" id="L43">                ? GENESIS_CHECKSUM</span>
+<span class="fc" id="L44">                : inMemoryLog.get(inMemoryLog.size() - 1).getChecksum();</span>
+<span class="fc" id="L45">        return new AuditEntry(seq, Instant.now().toString(),</span>
+<span class="fc" id="L46">                eventType.getEventName(), payload, prevChecksum);</span>
+    }
+
+    public boolean verifyChain() {
+<span class="fc" id="L50">        synchronized (writeLock) {</span>
+<span class="fc" id="L51">            String prevChecksum = GENESIS_CHECKSUM;</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">            for (AuditEntry entry : inMemoryLog) {</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">                if (!entry.verifyIntegrity(prevChecksum)) {</span>
+<span class="nc" id="L54">                    logger.severe(() -&gt; &quot;[AuditLog] INTEGRITY VIOLATION at seq=&quot; + entry.getSeqId());</span>
+<span class="nc" id="L55">                    return false;</span>
+                }
+<span class="fc" id="L57">                prevChecksum = entry.getChecksum();</span>
+<span class="fc" id="L58">            }</span>
+<span class="fc" id="L59">            logger.info(() -&gt; &quot;[AuditLog] Chain integrity verified. Entries: &quot; + inMemoryLog.size());</span>
+<span class="fc" id="L60">            return true;</span>
+        }
+    }
+
+    public long getLastStableSnapshotId() {
+<span class="fc" id="L65">        synchronized (writeLock) {</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">            if (inMemoryLog.isEmpty()) return 0L;</span>
+<span class="fc" id="L67">            return inMemoryLog.get(inMemoryLog.size() - 1).getSeqId();</span>
+        }
+    }
+
+    public List&lt;AuditEntry&gt; getEntries() {
+<span class="fc" id="L72">        synchronized (writeLock) {</span>
+<span class="fc" id="L73">            return new ArrayList&lt;&gt;(inMemoryLog);</span>
+        }
+    }
+
+    public void printLog() {
+<span class="fc" id="L78">        synchronized (writeLock) {</span>
+<span class="fc" id="L79">            logger.info(() -&gt; &quot;=== AUDIT LOG (&quot; + inMemoryLog.size() + &quot; entries) ===&quot;);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">            for (AuditEntry e : inMemoryLog) {</span>
+<span class="fc" id="L81">                logger.info(() -&gt; String.format(&quot;  [%3d] %s | %s | %s | checksum=%s%n&quot;,</span>
+<span class="fc" id="L82">                        e.getSeqId(), e.getTimestamp(), e.getEventType(),</span>
+<span class="fc" id="L83">                        e.getPayload(), e.getChecksum().substring(0, 8)));</span>
+<span class="fc" id="L84">            }</span>
+<span class="fc" id="L85">            logger.info(&quot;=== END AUDIT LOG ===&quot;);</span>
+<span class="fc" id="L86">        }</span>
+<span class="fc" id="L87">    }</span>
+
+    private boolean writeEntryToFile(AuditEntry entry) {
+        try {
+<span class="fc" id="L91">            Path path = Paths.get(LOG_FILE);</span>
+<span class="fc" id="L92">            Files.createDirectories(path.getParent());</span>
+
+<span class="fc" id="L94">            boolean fileExists = Files.exists(path);</span>
+<span class="fc" id="L95">            try (BufferedWriter writer = Files.newBufferedWriter(path,</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">                    fileExists ? StandardOpenOption.APPEND : StandardOpenOption.CREATE,</span>
+                    StandardOpenOption.WRITE)) {
+<span class="fc bfc" id="L98" title="All 2 branches covered.">                if (!fileExists) {</span>
+<span class="fc" id="L99">                    writer.write(HEADER);</span>
+<span class="fc" id="L100">                    writer.newLine();</span>
+                }
+<span class="fc" id="L102">                writer.write(entry.toCsv());</span>
+<span class="fc" id="L103">                writer.newLine();</span>
+<span class="fc" id="L104">                writer.flush();</span>
+            }
+<span class="fc" id="L106">            return true;</span>
+<span class="nc" id="L107">        } catch (IOException e) {</span>
+<span class="nc" id="L108">            logger.severe(() -&gt; &quot;[AuditLog] Write failed: &quot; + e.getMessage());</span>
+<span class="nc" id="L109">            return false;</span>
+        }
+    }
+
+    private void loadFromFile() {
+<span class="fc" id="L114">        Path path = Paths.get(LOG_FILE);</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">        if (!Files.exists(path)) {</span>
+<span class="fc" id="L116">            logger.info(&quot;[AuditLog] No existing log file. Starting fresh.&quot;);</span>
+<span class="fc" id="L117">            return;</span>
+        }
+<span class="fc" id="L119">        try (BufferedReader reader = Files.newBufferedReader(path)) {</span>
+            String line;
+<span class="fc" id="L121">            boolean firstLine = true;</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            while ((line = reader.readLine()) != null) {</span>
+<span class="fc" id="L123">                line = line.trim();</span>
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">                if (line.isEmpty()) continue;</span>
+<span class="pc bpc" id="L125" title="1 of 4 branches missed.">                if (firstLine &amp;&amp; line.startsWith(&quot;seqId&quot;)) { firstLine = false; continue; }</span>
+<span class="fc" id="L126">                firstLine = false;</span>
+                try {
+<span class="fc" id="L128">                    AuditEntry entry = AuditEntry.fromCsv(line);</span>
+<span class="fc" id="L129">                    inMemoryLog.add(entry);</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">                    if (entry.getSeqId() &gt; sequenceCounter.get()) {</span>
+<span class="fc" id="L131">                        sequenceCounter.set(entry.getSeqId());</span>
+                    }
+<span class="nc" id="L133">                } catch (Exception e) {</span>
+<span class="nc" id="L134">                    final String malformedLine = line;</span>
+<span class="nc" id="L135">                    logger.severe(() -&gt; &quot;[AuditLog] Skipping malformed line: &quot; + malformedLine);</span>
+<span class="pc" id="L136">                }</span>
+            }
+<span class="fc" id="L138">            logger.info(() -&gt; &quot;[AuditLog] Loaded &quot; + inMemoryLog.size() + &quot; entries from file.&quot;);</span>
+<span class="nc" id="L139">        } catch (IOException e) {</span>
+<span class="nc" id="L140">            logger.severe(() -&gt; &quot;[AuditLog] Failed to load log: &quot; + e.getMessage());</span>
+<span class="fc" id="L141">        }</span>
+<span class="fc" id="L142">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

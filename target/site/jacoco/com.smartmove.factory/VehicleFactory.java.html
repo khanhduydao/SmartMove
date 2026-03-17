@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VehicleFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.factory</a> &gt; <span class="el_source">VehicleFactory.java</span></div><h1>VehicleFactory.java</h1><pre class="source lang-java linenums">package com.smartmove.factory;
+
+import com.smartmove.domain.*;
+import com.smartmove.domain.vehicle.*;
+import com.smartmove.config.DomainValidator;
+
+/**
+ * Factory for creating vehicles with validation.
+ * Centralizes object creation logic and validation.
+ */
+<span class="nc" id="L11">public class VehicleFactory {</span>
+    
+    /**
+     * Create vehicle from type string and parameters.
+     * @throws IllegalArgumentException if parameters are invalid
+     */
+    public static Vehicle createVehicle(String type, String id, City city, 
+                                         GeoCoordinate location, int batteryPercent) {
+        // Validation
+<span class="fc" id="L20">        DomainValidator.validateVehicleId(id);</span>
+<span class="fc" id="L21">        DomainValidator.requireNonNull(city, &quot;City cannot be null&quot;);</span>
+<span class="fc" id="L22">        DomainValidator.requireNonNull(location, &quot;Location cannot be null&quot;);</span>
+<span class="fc" id="L23">        DomainValidator.validateBatteryPercent(batteryPercent);</span>
+        
+<span class="fc bfc" id="L25" title="All 4 branches covered.">        return switch (type.toLowerCase()) {</span>
+<span class="fc" id="L26">            case &quot;bicycle&quot; -&gt; new Bicycle(id, city, location, batteryPercent);</span>
+<span class="fc" id="L27">            case &quot;electricscooter&quot;, &quot;scooter&quot; -&gt; new ElectricScooter(id, city, location, batteryPercent);</span>
+<span class="fc" id="L28">            case &quot;moped&quot; -&gt; new Moped(id, city, location, batteryPercent);</span>
+<span class="fc" id="L29">            default -&gt; throw new IllegalArgumentException(&quot;Unknown vehicle type: &quot; + type);</span>
+        };
+    }
+    
+    /**
+     * Create a vehicle with default battery level (80%).
+     */
+    public static Vehicle createVehicle(String type, String id, City city, GeoCoordinate location) {
+<span class="nc" id="L37">        return createVehicle(type, id, city, location, 80);</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

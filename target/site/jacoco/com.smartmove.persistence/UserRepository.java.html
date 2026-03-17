@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.persistence</a> &gt; <span class="el_source">UserRepository.java</span></div><h1>UserRepository.java</h1><pre class="source lang-java linenums">package com.smartmove.persistence;
+
+import static com.smartmove.constants.SmartMoveConstants.*;
+import com.smartmove.domain.Payment;
+import com.smartmove.domain.Rental;
+import com.smartmove.domain.User;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+// ─── USER REPOSITORY ────────────────────────────────────────────────────────
+
+class UserCsvStorage extends CsvFileStorage&lt;User&gt; {
+<span class="fc" id="L14">    UserCsvStorage() { super(USERS_CSV, &quot;id,name&quot;); }</span>
+
+    @Override
+    protected User fromCsv(String line) {
+<span class="fc" id="L18">        String[] p = splitCsv(line);</span>
+<span class="pc bpc" id="L19" title="1 of 2 branches missed.">        if (p.length &lt; 2) return null;</span>
+<span class="fc" id="L20">        return new User(p[0].trim(), p[1].trim());</span>
+    }
+
+    @Override
+    protected String toCsv(User u) {
+<span class="fc" id="L25">        return escapeCsv(u.getId()) + &quot;,&quot; + escapeCsv(u.getName());</span>
+    }
+}
+
+public class UserRepository {
+<span class="fc" id="L30">    private final Map&lt;String, User&gt; userMap = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L31">    private final UserCsvStorage storage = new UserCsvStorage();</span>
+
+<span class="fc" id="L33">    public UserRepository() {</span>
+<span class="fc" id="L34">        storage.loadAll().forEach(u -&gt; userMap.put(u.getId(), u));</span>
+<span class="fc" id="L35">    }</span>
+
+    public void save(User user) {
+<span class="fc" id="L38">        userMap.put(user.getId(), user);</span>
+<span class="fc" id="L39">        storage.saveAll(new ArrayList&lt;&gt;(userMap.values()));</span>
+<span class="fc" id="L40">    }</span>
+
+    public Optional&lt;User&gt; findById(String id) {
+<span class="fc" id="L43">        return Optional.ofNullable(userMap.get(id));</span>
+    }
+
+<span class="nc" id="L46">    public Map&lt;String, User&gt; getAll() { return Collections.unmodifiableMap(userMap); }</span>
+}
+
+
+// ─── RENTAL REPOSITORY ──────────────────────────────────────────────────────
+
+class RentalCsvStorage extends CsvFileStorage&lt;Rental&gt; {
+<span class="fc" id="L53">    RentalCsvStorage() { super(RENTALS_CSV, &quot;id,userId,vehicleId,startTime,endTime,active&quot;); }</span>
+
+    @Override
+    protected Rental fromCsv(String line) {
+<span class="fc" id="L57">        String[] p = splitCsv(line);</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        if (p.length &lt; 6) return null;</span>
+<span class="fc" id="L59">        Rental r = new Rental(p[0].trim(), p[1].trim(), p[2].trim(), p[3].trim());</span>
+<span class="fc" id="L60">        String endTime = p[4].trim();</span>
+<span class="fc" id="L61">        boolean active = Boolean.parseBoolean(p[5].trim());</span>
+<span class="pc bpc" id="L62" title="1 of 4 branches missed.">        if (!active &amp;&amp; !endTime.isEmpty()) {</span>
+<span class="fc" id="L63">            r.end(endTime);</span>
+        }
+<span class="fc" id="L65">        return r;</span>
+    }
+
+    @Override
+    protected String toCsv(Rental r) {
+<span class="fc" id="L70">        return String.join(&quot;,&quot;,</span>
+<span class="fc" id="L71">                escapeCsv(r.getId()),</span>
+<span class="fc" id="L72">                escapeCsv(r.getUserId()),</span>
+<span class="fc" id="L73">                escapeCsv(r.getVehicleId()),</span>
+<span class="fc" id="L74">                escapeCsv(r.getStartTime()),</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">                escapeCsv(r.getEndTime() != null ? r.getEndTime() : &quot;&quot;),</span>
+<span class="fc" id="L76">                String.valueOf(r.isActive())</span>
+        );
+    }
+}
+
+
+// ─── PAYMENT REPOSITORY ─────────────────────────────────────────────────────
+
+class PaymentCsvStorage extends CsvFileStorage&lt;Payment&gt; {
+    PaymentCsvStorage() {
+<span class="fc" id="L86">        super(PAYMENTS_CSV, &quot;id,rentalId,baseAmount,surcharges,total,description&quot;);</span>
+<span class="fc" id="L87">    }</span>
+
+    @Override
+    protected Payment fromCsv(String line) {
+<span class="fc" id="L91">        String[] p = splitCsv(line);</span>
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">        if (p.length &lt; 6) return null;</span>
+<span class="fc" id="L93">        return new Payment(</span>
+<span class="fc" id="L94">                p[0].trim(), p[1].trim(),</span>
+<span class="fc" id="L95">                Double.parseDouble(p[2].trim()),</span>
+<span class="fc" id="L96">                Double.parseDouble(p[3].trim()),</span>
+<span class="fc" id="L97">                p[5].trim()</span>
+        );
+    }
+
+    @Override
+    protected String toCsv(Payment pay) {
+<span class="fc" id="L103">        return String.join(&quot;,&quot;,</span>
+<span class="fc" id="L104">                escapeCsv(pay.getId()),</span>
+<span class="fc" id="L105">                escapeCsv(pay.getRentalId()),</span>
+<span class="fc" id="L106">                String.format(&quot;%.2f&quot;, pay.getBaseAmount()),</span>
+<span class="fc" id="L107">                String.format(&quot;%.2f&quot;, pay.getSurcharges()),</span>
+<span class="fc" id="L108">                String.format(&quot;%.2f&quot;, pay.getTotal()),</span>
+<span class="fc" id="L109">                escapeCsv(pay.getDescription())</span>
+        );
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

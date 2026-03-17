@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataSeeder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.util</a> &gt; <span class="el_source">DataSeeder.java</span></div><h1>DataSeeder.java</h1><pre class="source lang-java linenums">package com.smartmove.util;
+
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
+
+import com.smartmove.domain.*;
+import com.smartmove.domain.vehicle.*;
+import com.smartmove.persistence.*;
+import static com.smartmove.constants.TestConstants.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Seeds the system with sample vehicles, users, and cities for demo/testing.
+ */
+<span class="nc" id="L17">public class DataSeeder {</span>
+<span class="fc" id="L18">    private static final Logger logger = LoggerFactory.getLogger(DataSeeder.class);</span>
+
+    public static void seed(VehicleRepository vehicleRepo, UserRepository userRepo) {
+<span class="fc" id="L21">        logger.info(&quot;[DataSeeder] Seeding initial data...&quot;);</span>
+
+        // ─── Users ────────────────────────────────────────────────────────
+<span class="fc" id="L24">        List&lt;User&gt; users = Arrays.asList(</span>
+                new User(USER_001, &quot;Alice Johnson&quot;),
+                new User(USER_002, &quot;Bob Smith&quot;),
+                new User(USER_003, &quot;Carlos Rossi&quot;),
+                new User(USER_004, &quot;Elena Bianchi&quot;),
+                new User(USER_005, &quot;James Davies&quot;)
+        );
+<span class="fc" id="L31">        users.forEach(userRepo::save);</span>
+
+        // ─── Cities ───────────────────────────────────────────────────────
+<span class="fc" id="L34">        City london = new City(CITY_LONDON);</span>
+<span class="fc" id="L35">        City milan  = new City(CITY_MILAN);</span>
+<span class="fc" id="L36">        City rome   = new City(CITY_ROME);</span>
+
+        // ─── London fleet ─────────────────────────────────────────────────
+<span class="fc" id="L39">        vehicleRepo.put(new Bicycle(LON_BICYCLE_001, london,</span>
+                new GeoCoordinate(51.5074, -0.1278), 85));
+<span class="fc" id="L41">        vehicleRepo.put(new Bicycle(LON_BICYCLE_002, london,</span>
+                new GeoCoordinate(51.5200, -0.0850), 72));
+<span class="fc" id="L43">        vehicleRepo.put(new ElectricScooter(LON_SCOOTER_001, london,</span>
+                new GeoCoordinate(51.5155, -0.1168), 90));
+<span class="fc" id="L45">        vehicleRepo.put(new ElectricScooter(LON_SCOOTER_002, london,</span>
+                new GeoCoordinate(51.5010, -0.1247), 45));
+<span class="fc" id="L47">        vehicleRepo.put(new Moped(LON_MOPED_001, london,</span>
+                new GeoCoordinate(51.5000, -0.1250), 78));
+
+        // ─── Milan fleet ──────────────────────────────────────────────────
+<span class="fc" id="L51">        vehicleRepo.put(new Bicycle(MIL_BICYCLE_001, milan,</span>
+                new GeoCoordinate(45.4642, 9.1900), 95));
+<span class="fc" id="L53">        vehicleRepo.put(new ElectricScooter(MIL_SCOOTER_001, milan,</span>
+                new GeoCoordinate(45.4654, 9.1866), 60));
+<span class="fc" id="L55">        vehicleRepo.put(new Moped(MIL_MOPED_001, milan,</span>
+                new GeoCoordinate(45.4730, 9.1920), 88));
+<span class="fc" id="L57">        vehicleRepo.put(new Moped(MIL_MOPED_002, milan,</span>
+                new GeoCoordinate(45.4600, 9.1800), 30));
+
+        // ─── Rome fleet ───────────────────────────────────────────────────
+<span class="fc" id="L61">        vehicleRepo.put(new Bicycle(ROM_BICYCLE_001, rome,</span>
+                new GeoCoordinate(41.9300, 12.5200), 92));
+<span class="fc" id="L63">        vehicleRepo.put(new ElectricScooter(ROM_SCOOTER_001, rome,</span>
+                new GeoCoordinate(41.9350, 12.5150), 55));
+<span class="fc" id="L65">        vehicleRepo.put(new ElectricScooter(ROM_SCOOTER_002, rome,</span>
+                new GeoCoordinate(41.9400, 12.5100), 70));
+<span class="fc" id="L67">        vehicleRepo.put(new Moped(ROM_MOPED_001, rome,</span>
+                new GeoCoordinate(41.9450, 12.5050), 80));
+
+        // Save all vehicles
+<span class="fc" id="L71">        vehicleRepo.saveAll();</span>
+
+      
+<span class="fc" id="L74">logger.info(() -&gt; &quot;[DataSeeder] Seeded &quot;</span>
+<span class="fc" id="L75">        + vehicleRepo.getAll().size() + &quot; vehicles and &quot;</span>
+<span class="fc" id="L76">        + users.size() + &quot; users.&quot;);</span>
+
+<span class="fc" id="L78">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

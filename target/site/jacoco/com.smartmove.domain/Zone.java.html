@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Zone.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.domain</a> &gt; <span class="el_source">Zone.java</span></div><h1>Zone.java</h1><pre class="source lang-java linenums">package com.smartmove.domain;
+
+import com.smartmove.config.DomainValidator;
+
+/**
+ * Geographic zone for geofencing and policy enforcement.
+ */
+public final class Zone {
+    private final String zoneId;
+    private final GeoCoordinate center;
+    private final double radiusMeters;
+    private final boolean restricted;
+
+<span class="fc" id="L14">    public Zone(String zoneId, GeoCoordinate center, double radiusMeters, boolean restricted) {</span>
+<span class="fc" id="L15">        DomainValidator.requireNonNull(zoneId, &quot;Zone ID cannot be null&quot;);</span>
+<span class="fc" id="L16">        DomainValidator.requireNonNull(center, &quot;Zone center cannot be null&quot;);</span>
+        
+<span class="pc bpc" id="L18" title="1 of 2 branches missed.">        if (radiusMeters &lt;= 0) {</span>
+<span class="nc" id="L19">            throw new IllegalArgumentException(&quot;Zone radius must be positive: &quot; + radiusMeters);</span>
+        }
+        
+<span class="fc" id="L22">        this.zoneId = zoneId;</span>
+<span class="fc" id="L23">        this.center = center;</span>
+<span class="fc" id="L24">        this.radiusMeters = radiusMeters;</span>
+<span class="fc" id="L25">        this.restricted = restricted;</span>
+<span class="fc" id="L26">    }</span>
+
+<span class="fc" id="L28">    public String getZoneId() { return zoneId; }</span>
+<span class="nc" id="L29">    public GeoCoordinate getCenter() { return center; }</span>
+<span class="fc" id="L30">    public double getRadiusMeters() { return radiusMeters; }</span>
+<span class="fc" id="L31">    public boolean isRestricted() { return restricted; }</span>
+
+    /**
+     * Check if a point is inside this zone.
+     */
+    public boolean contains(GeoCoordinate point) {
+<span class="fc" id="L37">        DomainValidator.requireNonNull(point, &quot;Point cannot be null&quot;);</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        return center.distanceTo(point) &lt;= radiusMeters;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L43">        return String.format(&quot;Zone[%s, center=%s, radius=%.0fm, restricted=%b]&quot;,</span>
+<span class="nc" id="L44">                zoneId, center, radiusMeters, restricted);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

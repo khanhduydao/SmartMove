@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Vehicle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.domain.vehicle</a> &gt; <span class="el_source">Vehicle.java</span></div><h1>Vehicle.java</h1><pre class="source lang-java linenums">package com.smartmove.domain.vehicle;
+
+import com.smartmove.domain.City;
+import com.smartmove.domain.GeoCoordinate;
+import com.smartmove.domain.TelemetryData;
+import com.smartmove.config.DomainValidator;
+import com.smartmove.events.EventBus;
+import com.smartmove.events.VehicleStateChangedEvent;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
+/**
+ * Base class for all vehicle types.
+ * Refactored to publish events on state changes (Event-Driven Architecture).
+ */
+public abstract class Vehicle {
+    protected final String id;
+    protected final AtomicReference&lt;VehicleState&gt; state;
+    protected final AtomicInteger batteryPercent;
+    protected final AtomicReference&lt;Double&gt; temperatureC;
+    protected final AtomicReference&lt;GeoCoordinate&gt; location;
+    protected final City city;
+
+    // Lock object for thread-safe state transitions
+<span class="fc" id="L24">    private final Object stateLock = new Object();</span>
+
+<span class="fc" id="L26">    public Vehicle(String id, City city, GeoCoordinate location, int batteryPercent) {</span>
+<span class="fc" id="L27">        DomainValidator.validateVehicleId(id);</span>
+<span class="fc" id="L28">        DomainValidator.requireNonNull(city, &quot;City cannot be null&quot;);</span>
+<span class="fc" id="L29">        DomainValidator.requireNonNull(location, &quot;Location cannot be null&quot;);</span>
+<span class="fc" id="L30">        DomainValidator.validateBatteryPercent(batteryPercent);</span>
+        
+<span class="fc" id="L32">        this.id = id;</span>
+<span class="fc" id="L33">        this.state = new AtomicReference&lt;&gt;(VehicleState.AVAILABLE);</span>
+<span class="fc" id="L34">        this.city = city;</span>
+<span class="fc" id="L35">        this.location = new AtomicReference&lt;&gt;(location);</span>
+<span class="fc" id="L36">        this.batteryPercent = new AtomicInteger(batteryPercent);</span>
+<span class="fc" id="L37">        this.temperatureC = new AtomicReference&lt;&gt;(20.0);</span>
+<span class="fc" id="L38">    }</span>
+
+    public abstract String getType();
+
+    /**
+     * Thread-safe state transition with event publishing.
+     * Returns true if transition was successful.
+     */
+    public boolean transitionTo(VehicleState newState) {
+<span class="fc" id="L47">        synchronized (stateLock) {</span>
+<span class="fc" id="L48">            VehicleState currentState = this.state.get();</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">            if (isValidTransition(currentState, newState)) {</span>
+<span class="fc" id="L50">                VehicleState oldState = this.state.getAndSet(newState);</span>
+
+                // Publish state change event (Event-Driven Architecture)
+<span class="fc" id="L53">                EventBus.getInstance().publish(</span>
+                    new VehicleStateChangedEvent(this, oldState, newState)
+                );
+                
+<span class="fc" id="L57">                return true;</span>
+            }
+<span class="fc" id="L59">            return false;</span>
+        }
+    }
+
+    /**
+     * Validate if transition from one state to another is allowed.
+     * State machine validation logic.
+     */
+    public boolean isValidTransition(VehicleState from, VehicleState to) {
+<span class="pc bpc" id="L68" title="2 of 6 branches missed.">        return switch (from) {</span>
+<span class="pc bpc" id="L69" title="4 of 8 branches missed.">            case AVAILABLE -&gt; to == VehicleState.RESERVED </span>
+                           || to == VehicleState.MAINTENANCE
+                           || to == VehicleState.EMERGENCY_LOCK 
+                           || to == VehicleState.RELOCATING;
+            
+<span class="pc bpc" id="L74" title="5 of 6 branches missed.">            case RESERVED -&gt; to == VehicleState.IN_USE </span>
+                          || to == VehicleState.AVAILABLE
+                          || to == VehicleState.EMERGENCY_LOCK;
+            
+<span class="pc bpc" id="L78" title="2 of 6 branches missed.">            case IN_USE -&gt; to == VehicleState.AVAILABLE </span>
+                        || to == VehicleState.MAINTENANCE
+                        || to == VehicleState.EMERGENCY_LOCK;
+            
+<span class="nc bnc" id="L82" title="All 4 branches missed.">            case MAINTENANCE -&gt; to == VehicleState.AVAILABLE </span>
+                             || to == VehicleState.EMERGENCY_LOCK;
+            
+<span class="pc bpc" id="L85" title="2 of 4 branches missed.">            case EMERGENCY_LOCK -&gt; to == VehicleState.MAINTENANCE </span>
+                                || to == VehicleState.AVAILABLE;
+            
+<span class="nc bnc" id="L88" title="All 4 branches missed.">            case RELOCATING -&gt; to == VehicleState.AVAILABLE </span>
+                            || to == VehicleState.MAINTENANCE;
+
+        };
+    }
+
+    /**
+     * Apply telemetry data to update vehicle state.
+     * Thread-safe operation.
+     */
+    public void applyTelemetry(TelemetryData t) {
+<span class="fc" id="L99">        DomainValidator.requireNonNull(t, &quot;Telemetry data cannot be null&quot;);</span>
+        
+<span class="fc" id="L101">        synchronized (stateLock) {</span>
+<span class="fc" id="L102">            this.location.set(t.getGps());</span>
+<span class="fc" id="L103">            this.batteryPercent.set(t.getBatteryPercent());</span>
+<span class="fc" id="L104">            this.temperatureC.set(t.getTemperatureC());</span>
+<span class="fc" id="L105">        }</span>
+<span class="fc" id="L106">    }</span>
+
+    // Getters
+<span class="fc" id="L109">    public String getId() { return id; }</span>
+<span class="fc" id="L110">    public VehicleState getState() { return state.get(); }</span>
+<span class="fc" id="L111">    public int getBatteryPercent() { return batteryPercent.get(); }</span>
+<span class="fc" id="L112">    public double getTemperatureC() { return temperatureC.get(); }</span>
+<span class="fc" id="L113">    public GeoCoordinate getLocation() { return location.get(); }</span>
+<span class="fc" id="L114">    public City getCity() { return city; }</span>
+<span class="nc" id="L115">    public Object getStateLock() { return stateLock; }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L119">        return String.format(&quot;%s[id=%s, state=%s, bat=%d%%, temp=%.1f°C, city=%s]&quot;,</span>
+<span class="nc" id="L120">                getType(), id, state.get(), batteryPercent.get(), temperatureC.get(), city.getName());</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (this == obj) return true;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (!(obj instanceof Vehicle)) return false;</span>
+<span class="nc" id="L127">        return id.equals(((Vehicle) obj).id);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L132">        return id.hashCode();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

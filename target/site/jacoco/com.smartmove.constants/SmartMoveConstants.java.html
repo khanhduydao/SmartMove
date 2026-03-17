@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SmartMoveConstants.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">SmartMove Core Engine - Refactored</a> &gt; <a href="index.source.html" class="el_package">com.smartmove.constants</a> &gt; <span class="el_source">SmartMoveConstants.java</span></div><h1>SmartMoveConstants.java</h1><pre class="source lang-java linenums">package com.smartmove.constants;
+
+/**
+ * Centralized constants to eliminate magic strings and numbers.
+ * Improves maintainability by providing a single source of truth.
+ */
+public final class SmartMoveConstants {
+
+<span class="nc" id="L9">    private SmartMoveConstants() {</span>
+<span class="nc" id="L10">        throw new AssertionError(&quot;Cannot instantiate constants class&quot;);</span>
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TELEMETRY THRESHOLDS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final double CRITICAL_TEMPERATURE_C = 60.0;
+    public static final double WARNING_TEMPERATURE_C = 50.0;
+    public static final int CRITICAL_BATTERY_PERCENT = 5;
+    public static final int LOW_BATTERY_PERCENT = 15;
+    public static final double THEFT_MOVEMENT_THRESHOLD_METERS = 10.0;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CITY POLICY SETTINGS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    // London
+    public static final double LONDON_CONGESTION_CHARGE = 3.50;
+    public static final int LONDON_MIN_BATTERY_PERCENT = 15;
+    
+    // Milan
+    public static final double MILAN_CITY_CENTER_SURCHARGE = 1.50;
+    public static final int MILAN_MIN_BATTERY_PERCENT = 15;
+    
+    // Rome
+    public static final int ROME_MIN_BATTERY_PERCENT = 15;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FILE PATHS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final String DATA_DIR = &quot;data&quot;;
+    public static final String VEHICLES_CSV = DATA_DIR + &quot;/vehicles.csv&quot;;
+    public static final String USERS_CSV = DATA_DIR + &quot;/users.csv&quot;;
+    public static final String RENTALS_CSV = DATA_DIR + &quot;/rentals.csv&quot;;
+    public static final String PAYMENTS_CSV = DATA_DIR + &quot;/payments.csv&quot;;
+    public static final String AUDIT_LOG_CSV = DATA_DIR + &quot;/audit_log.csv&quot;;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIT SETTINGS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final String GENESIS_CHECKSUM = &quot;0000000000000000&quot;;
+    public static final long CHECKSUM_HASH_SEED = 5381L;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // QUEUE SETTINGS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final int TELEMETRY_QUEUE_CAPACITY = 50_000;
+    public static final long TELEMETRY_POLL_TIMEOUT_MS = 100L;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PRICING
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final double BASE_RENTAL_AMOUNT = 6.00;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SEQUENCE ID SEEDS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public static final long RENTAL_ID_SEED = 1000L;
+    public static final long PAYMENT_ID_SEED = 1000L;
+    public static final long AUDIT_SEQ_SEED = 0L;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
