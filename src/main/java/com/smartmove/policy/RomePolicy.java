@@ -1,5 +1,7 @@
 package com.smartmove.policy;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RomePolicy implements CityPolicy {
+    private static final Logger logger = LoggerFactory.getLogger(RomePolicy.class);
 
     // Zones restricted to electric scooters (archaeological/pedestrian areas)
     private static final List<Zone> SCOOTER_RESTRICTED_ZONES = new ArrayList<>();
@@ -46,12 +49,12 @@ public class RomePolicy implements CityPolicy {
         if (telemetryData != null) {
             isAllowed(v, telemetryData.getGps());
         }
-        System.out.println("[RomePolicy] Pre-unlock check passed for vehicle " + v.getId());
+        logger.info("[RomePolicy] Pre-unlock check passed for vehicle " + v.getId());
     }
 
     @Override
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
-        System.out.printf("[RomePolicy] Trip completed. Base cost: %.2f%n", baseAmount);
+        logger.info(String.format("[RomePolicy] Trip completed. Base cost: %.2f%n", baseAmount));
         return 0.0; // No additional surcharge in Rome by default
     }
 

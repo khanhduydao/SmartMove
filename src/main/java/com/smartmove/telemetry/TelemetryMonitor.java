@@ -1,5 +1,7 @@
 package com.smartmove.telemetry;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import com.smartmove.domain.TelemetryData;
 import com.smartmove.domain.vehicle.Vehicle;
 import com.smartmove.domain.vehicle.VehicleState;
@@ -17,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Notifies the central controller via callback when critical conditions are detected.
  */
 public class TelemetryMonitor implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(TelemetryMonitor.class);
     private final BlockingQueue<TelemetryUpdate> telemetryQueue = new LinkedBlockingQueue<>(TELEMETRY_QUEUE_CAPACITY);
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -89,7 +92,7 @@ public class TelemetryMonitor implements Runnable {
             telemetryQueue.put(new TelemetryUpdate(v, data, prevLoc));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("[TelemetryMonitor] Interrupted while submitting telemetry.");
+            logger.severe("[TelemetryMonitor] Interrupted while submitting telemetry.");
         }
     }
 

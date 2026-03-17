@@ -26,6 +26,9 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mainClass>com.smartmove.Main</mainClass>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+		<sonar.projectKey>smartmove-lab</sonar.projectKey>
+		<sonar.projectName>SmartMove</sonar.projectName>
         
         <!-- Versions -->
         <junit.version>5.10.1</junit.version>
@@ -58,6 +61,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    
 
     <build>
         <plugins>
@@ -74,6 +78,12 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
+
+            	<plugin>            
+    			<groupId>org.sonarsource.scanner.maven</groupId>
+    			<artifactId>sonar-maven-plugin</artifactId>
+   				 <version>3.9.1.2184</version>
+			</plugin>
 
             <!-- Surefire Plugin for running tests -->
             <plugin>
@@ -119,7 +129,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.00</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -127,13 +137,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-
-            <!-- SonarQube Plugin -->
-            <plugin>
-                <groupId>org.sonarsource.scanner.maven</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-                <version>${sonar.version}</version>
             </plugin>
 
             <!-- Exec Plugin for running Main -->

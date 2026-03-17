@@ -11,7 +11,7 @@ public final class Moped extends Vehicle {
         super(id, city, location, batteryPercent);
     }
 
-    public boolean isHelmetDetected() { return helmetDetected; }
+    public synchronized boolean isHelmetDetected() { return helmetDetected; }
     
     public synchronized void setHelmetDetected(boolean helmetDetected) {
         this.helmetDetected = helmetDetected;

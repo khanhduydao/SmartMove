@@ -1,5 +1,7 @@
 package com.smartmove.events;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,6 +18,7 @@ import java.util.function.Consumer;
  * - Flexibility - runtime subscription/unsubscription
  */
 public class EventBus {
+    private static final Logger logger = LoggerFactory.getLogger(EventBus.class);
 
     private static final EventBus INSTANCE = new EventBus();
     
@@ -64,7 +67,7 @@ public class EventBus {
                 try {
                     ((Consumer<T>) handler).accept(event);
                 } catch (Exception e) {
-                    System.err.println("[EventBus] Handler error for " + event.getClass().getSimpleName() + ": " + e.getMessage());
+                    logger.severe("[EventBus] Handler error for " + event.getClass().getSimpleName() + ": " + e.getMessage());
                 }
             }
         }

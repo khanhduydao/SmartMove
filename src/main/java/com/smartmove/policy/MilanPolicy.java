@@ -1,5 +1,7 @@
 package com.smartmove.policy;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MilanPolicy implements CityPolicy {
+    private static final Logger logger = LoggerFactory.getLogger(MilanPolicy.class);
     private static final List<Zone> RESTRICTED_ZONES = new ArrayList<>();
     private static final Zone CITY_CENTER_ZONE;
 
@@ -38,7 +41,7 @@ public class MilanPolicy implements CityPolicy {
                         "Milan policy: Helmet not detected! Moped " + v.getId()
                                 + " cannot be unlocked without confirmed helmet presence.");
             }
-            System.out.println("[MilanPolicy] Helmet confirmed for Moped " + v.getId());
+            logger.info("[MilanPolicy] Helmet confirmed for Moped " + v.getId());
         }
         if (v.getBatteryPercent() < MILAN_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
@@ -50,7 +53,7 @@ public class MilanPolicy implements CityPolicy {
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
         double surcharge = 0.0;
         // No city-specific surcharge by default, but city center adds extra
-        System.out.printf("[MilanPolicy] Base trip cost: %.2f%n", baseAmount);
+        logger.info(String.format("[MilanPolicy] Base trip cost: %.2f%n", baseAmount));
         return surcharge;
     }
 

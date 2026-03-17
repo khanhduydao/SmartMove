@@ -6,17 +6,18 @@ import com.smartmove.domain.TelemetryData;
 import com.smartmove.config.DomainValidator;
 import com.smartmove.events.EventBus;
 import com.smartmove.events.VehicleStateChangedEvent;
-
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Base class for all vehicle types.
  * Refactored to publish events on state changes (Event-Driven Architecture).
  */
 public abstract class Vehicle {
     protected final String id;
-    protected volatile VehicleState state;
-    protected volatile int batteryPercent;
-    protected volatile double temperatureC;
-    protected volatile GeoCoordinate location;
+    protected final AtomicReference<VehicleState> state;
+    protected final AtomicInteger batteryPercent;
+    protected final AtomicReference<Double> temperatureC;
+    protected final AtomicReference<GeoCoordinate> location;
     protected final City city;
 
     // Lock object for thread-safe state transitions
@@ -29,11 +30,11 @@ public abstract class Vehicle {
         DomainValidator.validateBatteryPercent(batteryPercent);
         
         this.id = id;
-        this.state = VehicleState.AVAILABLE;
+        this.state = new AtomicReference<>(VehicleState.AVAILABLE);
         this.city = city;
-        this.location = location;
-        this.batteryPercent = batteryPercent;
-        this.temperatureC = 20.0;
+        this.location = new AtomicReference<>(location);
+        this.batteryPercent = new AtomicInteger(batteryPercent);
+        this.temperatureC = new AtomicReference<>(20.0);
     }
 
     public abstract String getType();
@@ -44,10 +45,10 @@ public abstract class Vehicle {
      */
     public boolean transitionTo(VehicleState newState) {
         synchronized (stateLock) {
-            if (isValidTransition(this.state, newState)) {
-                VehicleState oldState = this.state;
-                this.state = newState;
-                
+            VehicleState currentState = this.state.get();
+            if (isValidTransition(currentState, newState)) {
+                VehicleState oldState = this.state.getAndSet(newState);
+
                 // Publish state change event (Event-Driven Architecture)
                 EventBus.getInstance().publish(
                     new VehicleStateChangedEvent(this, oldState, newState)
@@ -86,8 +87,7 @@ public abstract class Vehicle {
             
             case RELOCATING -> to == VehicleState.AVAILABLE 
                             || to == VehicleState.MAINTENANCE;
-            
-            default -> false;
+
         };
     }
 
@@ -99,18 +99,18 @@ public abstract class Vehicle {
         DomainValidator.requireNonNull(t, "Telemetry data cannot be null");
         
         synchronized (stateLock) {
-            this.location = t.getGps();
-            this.batteryPercent = t.getBatteryPercent();
-            this.temperatureC = t.getTemperatureC();
+            this.location.set(t.getGps());
+            this.batteryPercent.set(t.getBatteryPercent());
+            this.temperatureC.set(t.getTemperatureC());
         }
     }
 
     // Getters
     public String getId() { return id; }
-    public VehicleState getState() { return state; }
-    public int getBatteryPercent() { return batteryPercent; }
-    public double getTemperatureC() { return temperatureC; }
-    public GeoCoordinate getLocation() { return location; }
+    public VehicleState getState() { return state.get(); }
+    public int getBatteryPercent() { return batteryPercent.get(); }
+    public double getTemperatureC() { return temperatureC.get(); }
+    public GeoCoordinate getLocation() { return location.get(); }
     public City getCity() { return city; }
     public Object getStateLock() { return stateLock; }
 

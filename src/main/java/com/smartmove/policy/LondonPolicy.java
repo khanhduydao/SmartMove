@@ -1,5 +1,7 @@
 package com.smartmove.policy;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
@@ -12,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LondonPolicy implements CityPolicy {
+    private static final Logger logger = LoggerFactory.getLogger(LondonPolicy.class);
 
     // Simplified London congestion/pedestrian zones
     private static final List<Zone> CONGESTION_ZONES = new ArrayList<>();
@@ -40,7 +43,7 @@ public class LondonPolicy implements CityPolicy {
             throw new PolicyViolationException(
                     "London policy: battery too low to start rental (" + v.getBatteryPercent() + "%)");
         }
-        System.out.println("[LondonPolicy] Pre-unlock check passed for vehicle " + v.getId());
+        logger.info("[LondonPolicy] Pre-unlock check passed for vehicle " + v.getId());
     }
 
     @Override
@@ -48,7 +51,7 @@ public class LondonPolicy implements CityPolicy {
         double surcharge = 0.0;
         // London applies congestion charge at end of every trip
         surcharge += LONDON_CONGESTION_CHARGE;
-        System.out.printf("[LondonPolicy] Applying congestion charge: £%.2f%n", LONDON_CONGESTION_CHARGE);
+        logger.info(String.format("[LondonPolicy] Applying congestion charge: £%.2f%n", LONDON_CONGESTION_CHARGE));
         return surcharge;
     }
 
@@ -66,7 +69,7 @@ public class LondonPolicy implements CityPolicy {
     public boolean isAllowed(Vehicle v, GeoCoordinate gps) throws PolicyViolationException {
         for (Zone zone : CONGESTION_ZONES) {
             if (zone.isRestricted() && zone.contains(gps)) {
-                System.out.println("[LondonPolicy] Vehicle " + v.getId()
+                logger.info("[LondonPolicy] Vehicle " + v.getId()
                         + " in congestion zone " + zone.getZoneId()
                         + " — congestion charge will apply.");
                 // Not a hard block, but flag it (charge applied at end of trip)

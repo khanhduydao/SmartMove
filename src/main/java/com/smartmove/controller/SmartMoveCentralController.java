@@ -1,5 +1,7 @@
 package com.smartmove.controller;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import com.smartmove.audit.AuditEntry;
 import com.smartmove.audit.AuditLog;
 import com.smartmove.domain.*;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *   - File-based persistence (CSV) for all domain entities
  */
 public class SmartMoveCentralController {
+    private static final Logger logger = LoggerFactory.getLogger(SmartMoveCentralController.class);
 
     // ─── Repositories ─────────────────────────────────────────────────────
     private final VehicleRepository vehicleRepo;
@@ -76,8 +79,8 @@ public class SmartMoveCentralController {
         this.telemetryThread.setDaemon(true);
         this.telemetryThread.start();
 
-        System.out.println("[Controller] SmartMoveCentralController initialized.");
-        System.out.println("[Controller] Loaded " + vehicleRepo.getAll().size() + " vehicles.");
+        logger.info("[Controller] SmartMoveCentralController initialized.");
+        logger.info("[Controller] Loaded " + vehicleRepo.getAll().size() + " vehicles.");
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -117,8 +120,8 @@ public class SmartMoveCentralController {
                 throw new SmartMoveException("Reserve transaction failed and was rolled back: " + e.getMessage());
             }
 
-            System.out.printf("[Controller] Vehicle %s RESERVED by user %s (rental %s)%n",
-                    vehicleId, user.getName(), rentalId);
+            logger.info(String.format("[Controller] Vehicle %s RESERVED by user %s (rental %s)%n",
+                    vehicleId, user.getName(), rentalId));
             return rental;
         }
     }
@@ -167,8 +170,8 @@ public class SmartMoveCentralController {
                 throw new SmartMoveException("Start rental rolled back: " + e.getMessage());
             }
 
-            System.out.printf("[Controller] Rental %s STARTED for vehicle %s in %s%n",
-                    rentalId, vehicleId, v.getCity().getName());
+            logger.info(String.format("[Controller] Rental %s STARTED for vehicle %s in %s%n",
+                    rentalId, vehicleId, v.getCity().getName()));
         }
     }
 
@@ -210,7 +213,7 @@ public class SmartMoveCentralController {
                     surchargeDesc = v.getCity().getName() + " surcharge";
                 }
             } catch (PolicyViolationException e) {
-                System.err.println("[Controller] Warning: afterTrip policy error: " + e.getMessage());
+                logger.severe("[Controller] Warning: afterTrip policy error: " + e.getMessage());
             }
 
             String paymentId = "P" + paymentIdSeq.incrementAndGet();
@@ -238,8 +241,8 @@ public class SmartMoveCentralController {
                 throw new SmartMoveException("End rental rolled back: " + e.getMessage());
             }
 
-            System.out.printf("[Controller] Rental %s ENDED. Total: €%.2f (base=%.2f + surcharge=%.2f)%n",
-                    rentalId, payment.getTotal(), baseAmount, surcharge);
+            logger.info(String.format("[Controller] Rental %s ENDED. Total: €%.2f (base=%.2f + surcharge=%.2f)%n",
+                    rentalId, payment.getTotal(), baseAmount, surcharge));
             return payment;
         }
     }
@@ -268,7 +271,7 @@ public class SmartMoveCentralController {
             policy.validateTransition(v, to);
             return v.isValidTransition(v.getState(), to);
         } catch (PolicyViolationException e) {
-            System.err.println("[Controller] Transition validation failed: " + e.getMessage());
+            logger.severe("[Controller] Transition validation failed: " + e.getMessage());
             return false;
         }
     }
@@ -279,15 +282,15 @@ public class SmartMoveCentralController {
 
     public void monitorTelemetryStream() {
         if (!telemetryMonitor.isRunning()) {
-            System.out.println("[Controller] TelemetryMonitor already stopped or not started.");
+            logger.info("[Controller] TelemetryMonitor already stopped or not started.");
         } else {
-            System.out.println("[Controller] TelemetryMonitor is running.");
+            logger.info("[Controller] TelemetryMonitor is running.");
         }
     }
 
     public void stopTelemetryMonitor() {
         telemetryMonitor.stop();
-        System.out.println("[Controller] TelemetryMonitor stop signal sent.");
+        logger.info("[Controller] TelemetryMonitor stop signal sent.");
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -300,7 +303,7 @@ public class SmartMoveCentralController {
      * consistent with the persisted audit log.
      */
     public void rollback(String lastStableSnapshotId) {
-        System.out.println("[Controller] ROLLBACK requested to snapshot: " + lastStableSnapshotId);
+        logger.info("[Controller] ROLLBACK requested to snapshot: " + lastStableSnapshotId);
         // Restore all vehicles to their last snapshotted state
         stateSnapshots.forEach((vehicleId, savedState) -> {
             vehicleRepo.findById(vehicleId).ifPresent(v -> {
@@ -309,18 +312,18 @@ public class SmartMoveCentralController {
                     if (current != savedState) {
                         // Force the state back (bypass normal transition validation for rollback)
                         forceVehicleState(v, savedState);
-                        System.out.printf("[Controller] Rolled back vehicle %s: %s → %s%n",
-                                vehicleId, current, savedState);
+                        logger.info(String.format("[Controller] Rolled back vehicle %s: %s → %s%n",
+                                vehicleId, current, savedState));
                     }
                 }
             });
         });
         stateSnapshots.clear();
-        System.out.println("[Controller] Rollback complete.");
+        logger.info("[Controller] Rollback complete.");
     }
 
     private void rollback(String vehicleId, VehicleState targetState, String reason) {
-        System.err.println("[Controller] ROLLBACK: vehicle=" + vehicleId
+        logger.severe("[Controller] ROLLBACK: vehicle=" + vehicleId
                 + " → " + targetState + " reason: " + reason);
         vehicleRepo.findById(vehicleId).ifPresent(v -> forceVehicleState(v, targetState));
     }
@@ -382,7 +385,7 @@ public class SmartMoveCentralController {
         if (transitioned) {
             vehicleRepo.save(v);
             writeAudit(AuditEventType.EMERGENCY_LOCK, "vehicle=" + v.getId() + " reason=" + reason);
-            System.err.printf("[Controller] EMERGENCY LOCK: vehicle=%s reason=%s%n", v.getId(), reason);
+            logger.severe(String.format("[Controller] EMERGENCY LOCK: vehicle=%s reason=%s%n", v.getId(), reason));
         }
     }
 
@@ -391,12 +394,12 @@ public class SmartMoveCentralController {
         if (transitioned) {
             vehicleRepo.save(v);
             writeAudit(AuditEventType.VEHICLE_MAINTENANCE, "vehicle=" + v.getId() + " reason=" + reason);
-            System.out.printf("[Controller] Vehicle %s sent to MAINTENANCE: %s%n", v.getId(), reason);
+            logger.info(String.format("[Controller] Vehicle %s sent to MAINTENANCE: %s%n", v.getId(), reason));
         }
     }
 
     private void handleCriticalAlert(Vehicle v, String eventType, String message) {
-        System.err.printf("[Controller] ALERT [%s]: vehicle=%s — %s%n", eventType, v.getId(), message);
+        logger.severe(String.format("[Controller] ALERT [%s]: vehicle=%s — %s%n", eventType, v.getId(), message));
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -413,7 +416,7 @@ public class SmartMoveCentralController {
                 CityPolicy policy = PolicyFactory.getPolicy(v.getCity().getName());
                 return policy.isAllowed(v, gps);
             } catch (PolicyViolationException e) {
-                System.err.println("[Controller] GPS violation for " + vehicleId + ": " + e.getMessage());
+                logger.severe("[Controller] GPS violation for " + vehicleId + ": " + e.getMessage());
                 triggerEmergencyLock(v, "GPS restriction violation: " + e.getMessage());
                 return false;
             }

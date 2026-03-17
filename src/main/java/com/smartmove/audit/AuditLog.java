@@ -1,6 +1,8 @@
 package com.smartmove.audit;
 
 import com.smartmove.constants.SmartMoveConstants;
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 
 import java.io.*;
 import java.nio.file.*;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AuditLog {
+    private static final Logger logger = LoggerFactory.getLogger(AuditLog.class);
     private static final String LOG_FILE = SmartMoveConstants.AUDIT_LOG_CSV;
     private static final String HEADER = "seqId,timestamp,eventType,payload,prevChecksum,checksum";
     private static final String GENESIS_CHECKSUM = SmartMoveConstants.GENESIS_CHECKSUM;
@@ -54,12 +57,12 @@ public class AuditLog {
             String prevChecksum = GENESIS_CHECKSUM;
             for (AuditEntry entry : inMemoryLog) {
                 if (!entry.verifyIntegrity(prevChecksum)) {
-                    System.err.println("[AuditLog] INTEGRITY VIOLATION at seq=" + entry.getSeqId());
+                    logger.severe("[AuditLog] INTEGRITY VIOLATION at seq=" + entry.getSeqId());
                     return false;
                 }
                 prevChecksum = entry.getChecksum();
             }
-            System.out.println("[AuditLog] Chain integrity verified. Entries: " + inMemoryLog.size());
+            logger.info("[AuditLog] Chain integrity verified. Entries: " + inMemoryLog.size());
             return true;
         }
     }
@@ -82,13 +85,13 @@ public class AuditLog {
 
     public void printLog() {
         synchronized (writeLock) {
-            System.out.println("=== AUDIT LOG (" + inMemoryLog.size() + " entries) ===");
+            logger.info("=== AUDIT LOG (" + inMemoryLog.size() + " entries) ===");
             for (AuditEntry e : inMemoryLog) {
-                System.out.printf("  [%3d] %s | %s | %s | checksum=%s%n",
+                logger.info(String.format("  [%3d] %s | %s | %s | checksum=%s%n",
                         e.getSeqId(), e.getTimestamp(), e.getEventType(),
-                        e.getPayload(), e.getChecksum().substring(0, 8));
+                        e.getPayload(), e.getChecksum().substring(0, 8)));
             }
-            System.out.println("=== END AUDIT LOG ===");
+            logger.info("=== END AUDIT LOG ===");
         }
     }
 
@@ -111,7 +114,7 @@ public class AuditLog {
             }
             return true;
         } catch (IOException e) {
-            System.err.println("[AuditLog] Write failed: " + e.getMessage());
+            logger.severe("[AuditLog] Write failed: " + e.getMessage());
             return false;
         }
     }
@@ -119,7 +122,7 @@ public class AuditLog {
     private void loadFromFile() {
         Path path = Paths.get(LOG_FILE);
         if (!Files.exists(path)) {
-            System.out.println("[AuditLog] No existing log file. Starting fresh.");
+            logger.info("[AuditLog] No existing log file. Starting fresh.");
             return;
         }
         try (BufferedReader reader = Files.newBufferedReader(path)) {
@@ -137,12 +140,12 @@ public class AuditLog {
                         sequenceCounter.set(entry.getSeqId());
                     }
                 } catch (Exception e) {
-                    System.err.println("[AuditLog] Skipping malformed line: " + line);
+                    logger.severe("[AuditLog] Skipping malformed line: " + line);
                 }
             }
-            System.out.println("[AuditLog] Loaded " + inMemoryLog.size() + " entries from file.");
+            logger.info("[AuditLog] Loaded " + inMemoryLog.size() + " entries from file.");
         } catch (IOException e) {
-            System.err.println("[AuditLog] Failed to load log: " + e.getMessage());
+            logger.severe("[AuditLog] Failed to load log: " + e.getMessage());
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.smartmove.config;
 
+import com.smartmove.config.LoggerFactory;
 import java.util.logging.*;
 
 /**
@@ -7,9 +8,8 @@ import java.util.logging.*;
  * Improves reliability through consistent error handling.
  */
 public class ExceptionHandler {
-    
-    private static final Logger logger = Logger.getLogger("SmartMove");
-    
+    private static final Logger logger = LoggerFactory.getLogger(ExceptionHandler.class);
+
     static {
         try {
             // Configure logging
@@ -19,7 +19,7 @@ public class ExceptionHandler {
             logger.addHandler(handler);
             logger.setLevel(Level.INFO);
         } catch (Exception e) {
-            System.err.println("Failed to configure logging: " + e.getMessage());
+            logger.severe("Failed to configure logging: " + e.getMessage());
         }
     }
     
@@ -51,7 +51,7 @@ public class ExceptionHandler {
                 
                 if (attempts < maxRetries) {
                     try {
-                        Thread.sleep(100 * attempts); // Exponential backoff
+                        Thread.sleep(100L * attempts); // Exponential backoff
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;

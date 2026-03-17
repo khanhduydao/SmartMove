@@ -1,5 +1,8 @@
 package com.smartmove.util;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
+
 import com.smartmove.domain.*;
 import com.smartmove.domain.vehicle.*;
 import com.smartmove.persistence.*;
@@ -12,9 +15,10 @@ import java.util.List;
  * Seeds the system with sample vehicles, users, and cities for demo/testing.
  */
 public class DataSeeder {
+    private static final Logger logger = LoggerFactory.getLogger(DataSeeder.class);
 
     public static void seed(VehicleRepository vehicleRepo, UserRepository userRepo) {
-        System.out.println("[DataSeeder] Seeding initial data...");
+        logger.info("[DataSeeder] Seeding initial data...");
 
         // ─── Users ────────────────────────────────────────────────────────
         List<User> users = Arrays.asList(
@@ -66,7 +70,7 @@ public class DataSeeder {
         // Save all vehicles
         vehicleRepo.saveAll();
 
-        System.out.println("[DataSeeder] Seeded "
+        logger.info("[DataSeeder] Seeded "
                 + vehicleRepo.getAll().size() + " vehicles and "
                 + users.size() + " users.");
     }
