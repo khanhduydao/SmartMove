@@ -57,12 +57,12 @@ public class AuditLog {
             String prevChecksum = GENESIS_CHECKSUM;
             for (AuditEntry entry : inMemoryLog) {
                 if (!entry.verifyIntegrity(prevChecksum)) {
-                    logger.severe("[AuditLog] INTEGRITY VIOLATION at seq=" + entry.getSeqId());
+                    logger.severe("[AuditLog] INTEGRITY VIOLATION at seq=%s".formatted(entry.getSeqId()));
                     return false;
                 }
                 prevChecksum = entry.getChecksum();
             }
-            logger.info("[AuditLog] Chain integrity verified. Entries: " + inMemoryLog.size());
+            logger.info("[AuditLog] Chain integrity verified. Entries: %s".formatted(inMemoryLog.size()));
             return true;
         }
     }
@@ -85,7 +85,7 @@ public class AuditLog {
 
     public void printLog() {
         synchronized (writeLock) {
-            logger.info("=== AUDIT LOG (" + inMemoryLog.size() + " entries) ===");
+            logger.info("=== AUDIT LOG (%s".formatted(inMemoryLog.size()) + " entries) ===");
             for (AuditEntry e : inMemoryLog) {
                 logger.info(String.format("  [%3d] %s | %s | %s | checksum=%s%n",
                         e.getSeqId(), e.getTimestamp(), e.getEventType(),
@@ -114,7 +114,7 @@ public class AuditLog {
             }
             return true;
         } catch (IOException e) {
-            logger.severe("[AuditLog] Write failed: " + e.getMessage());
+            logger.severe("[AuditLog] Write failed: %s".formatted(e.getMessage()));
             return false;
         }
     }
@@ -140,12 +140,12 @@ public class AuditLog {
                         sequenceCounter.set(entry.getSeqId());
                     }
                 } catch (Exception e) {
-                    logger.severe("[AuditLog] Skipping malformed line: " + line);
+                    logger.severe("[AuditLog] Skipping malformed line: %s".formatted(line));
                 }
             }
-            logger.info("[AuditLog] Loaded " + inMemoryLog.size() + " entries from file.");
+            logger.info("[AuditLog] Loaded %s".formatted(inMemoryLog.size()) + " entries from file.");
         } catch (IOException e) {
-            logger.severe("[AuditLog] Failed to load log: " + e.getMessage());
+            logger.severe("[AuditLog] Failed to load log: %s".formatted(e.getMessage()));
         }
     }
 }

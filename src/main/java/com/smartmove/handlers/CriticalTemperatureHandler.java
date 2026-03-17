@@ -20,8 +20,8 @@ public class CriticalTemperatureHandler implements TelemetryEventHandler {
         logger.severe(String.format("[CriticalTemperatureHandler] Vehicle %s at %.1f°C - triggering emergency lock%n",
                 vehicle.getId(), vehicle.getTemperatureC()));
         
-        stateManager.emergencyLock(vehicle, 
-                "Critical temperature: " + vehicle.getTemperatureC() + "°C");
+        stateManager.emergencyLock(vehicle,
+                "Critical temperature: %s°C".formatted(vehicle.getTemperatureC()));
         
         // Publish event
         EventBus.getInstance().publish(

@@ -43,7 +43,7 @@ public class LondonPolicy implements CityPolicy {
             throw new PolicyViolationException(
                     "London policy: battery too low to start rental (" + v.getBatteryPercent() + "%)");
         }
-        logger.info("[LondonPolicy] Pre-unlock check passed for vehicle " + v.getId());
+        logger.info("[LondonPolicy] Pre-unlock check passed for vehicle %s".formatted(v.getId()));
     }
 
     @Override
@@ -69,7 +69,7 @@ public class LondonPolicy implements CityPolicy {
     public boolean isAllowed(Vehicle v, GeoCoordinate gps) throws PolicyViolationException {
         for (Zone zone : CONGESTION_ZONES) {
             if (zone.isRestricted() && zone.contains(gps)) {
-                logger.info("[LondonPolicy] Vehicle " + v.getId()
+                logger.info("[LondonPolicy] Vehicle %s".formatted(v.getId())
                         + " in congestion zone " + zone.getZoneId()
                         + " — congestion charge will apply.");
                 // Not a hard block, but flag it (charge applied at end of trip)

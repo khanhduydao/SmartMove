@@ -38,11 +38,11 @@ public abstract class CsvFileStorage<T> implements FileStorage<T> {
                     T item = fromCsv(line);
                     if (item != null) results.add(item);
                 } catch (Exception e) {
-                    logger.severe("[CsvStorage] Failed to parse line in " + filePath + ": " + line);
+                    logger.severe("[CsvStorage] Failed to parse line in %s".formatted(filePath + ": " + line));
                 }
             }
         } catch (IOException e) {
-            logger.severe("[CsvStorage] Failed to load " + filePath + ": " + e.getMessage());
+            logger.severe("[CsvStorage] Failed to load %s".formatted(filePath + ": " + e.getMessage()));
         }
         return results;
     }
@@ -63,7 +63,7 @@ public abstract class CsvFileStorage<T> implements FileStorage<T> {
                 writer.flush();
             }
         } catch (IOException e) {
-            logger.severe("[CsvStorage] Failed to save " + filePath + ": " + e.getMessage());
+            logger.severe("[CsvStorage] Failed to save %s".formatted(filePath + ": " + e.getMessage()));
         }
     }
 

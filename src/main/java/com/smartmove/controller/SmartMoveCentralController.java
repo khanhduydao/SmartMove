@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SmartMoveCentralController
- *
+ * <p>
  * The single entry point for all business logic in the SmartMove system.
  * Responsibilities:
  *   - Vehicle reservation, rental start/end with multi-city policy enforcement
@@ -80,7 +80,6 @@ public class SmartMoveCentralController {
         this.telemetryThread.start();
 
         logger.info("[Controller] SmartMoveCentralController initialized.");
-        logger.info("[Controller] Loaded " + vehicleRepo.getAll().size() + " vehicles.");
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -213,7 +212,7 @@ public class SmartMoveCentralController {
                     surchargeDesc = v.getCity().getName() + " surcharge";
                 }
             } catch (PolicyViolationException e) {
-                logger.severe("[Controller] Warning: afterTrip policy error: " + e.getMessage());
+                logger.severe("[Controller] Warning: afterTrip policy error: %s".formatted(e.getMessage()));
             }
 
             String paymentId = "P" + paymentIdSeq.incrementAndGet();
@@ -271,7 +270,7 @@ public class SmartMoveCentralController {
             policy.validateTransition(v, to);
             return v.isValidTransition(v.getState(), to);
         } catch (PolicyViolationException e) {
-            logger.severe("[Controller] Transition validation failed: " + e.getMessage());
+            logger.severe("[Controller] Transition validation failed: %s".formatted(e.getMessage()));
             return false;
         }
     }
@@ -303,7 +302,7 @@ public class SmartMoveCentralController {
      * consistent with the persisted audit log.
      */
     public void rollback(String lastStableSnapshotId) {
-        logger.info("[Controller] ROLLBACK requested to snapshot: " + lastStableSnapshotId);
+        logger.info("[Controller] ROLLBACK requested to snapshot: %s".formatted(lastStableSnapshotId));
         // Restore all vehicles to their last snapshotted state
         stateSnapshots.forEach((vehicleId, savedState) -> {
             vehicleRepo.findById(vehicleId).ifPresent(v -> {
@@ -323,8 +322,8 @@ public class SmartMoveCentralController {
     }
 
     private void rollback(String vehicleId, VehicleState targetState, String reason) {
-        logger.severe("[Controller] ROLLBACK: vehicle=" + vehicleId
-                + " → " + targetState + " reason: " + reason);
+        logger.severe("[Controller] ROLLBACK: vehicle=%s".formatted(vehicleId
+                + " → " + targetState + " reason: " + reason));
         vehicleRepo.findById(vehicleId).ifPresent(v -> forceVehicleState(v, targetState));
     }
 
@@ -416,7 +415,7 @@ public class SmartMoveCentralController {
                 CityPolicy policy = PolicyFactory.getPolicy(v.getCity().getName());
                 return policy.isAllowed(v, gps);
             } catch (PolicyViolationException e) {
-                logger.severe("[Controller] GPS violation for " + vehicleId + ": " + e.getMessage());
+                logger.severe("[Controller] GPS violation for %s".formatted(vehicleId + ": " + e.getMessage()));
                 triggerEmergencyLock(v, "GPS restriction violation: " + e.getMessage());
                 return false;
             }

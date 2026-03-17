@@ -41,7 +41,7 @@ public class MilanPolicy implements CityPolicy {
                         "Milan policy: Helmet not detected! Moped " + v.getId()
                                 + " cannot be unlocked without confirmed helmet presence.");
             }
-            logger.info("[MilanPolicy] Helmet confirmed for Moped " + v.getId());
+            logger.info("[MilanPolicy] Helmet confirmed for Moped %s".formatted(v.getId()));
         }
         if (v.getBatteryPercent() < MILAN_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(

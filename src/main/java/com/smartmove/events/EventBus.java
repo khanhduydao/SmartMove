@@ -67,7 +67,7 @@ public class EventBus {
                 try {
                     ((Consumer<T>) handler).accept(event);
                 } catch (Exception e) {
-                    logger.severe("[EventBus] Handler error for " + event.getClass().getSimpleName() + ": " + e.getMessage());
+                    logger.severe("[EventBus] Handler error for %s".formatted(event.getClass().getSimpleName()) + ": " + e.getMessage());
                 }
             }
         }

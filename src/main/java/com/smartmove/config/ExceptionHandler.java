@@ -19,7 +19,7 @@ public class ExceptionHandler {
             logger.addHandler(handler);
             logger.setLevel(Level.INFO);
         } catch (Exception e) {
-            logger.severe("Failed to configure logging: " + e.getMessage());
+            logger.severe("Failed to configure logging: %s".formatted(e.getMessage()));
         }
     }
     

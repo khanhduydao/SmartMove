@@ -35,43 +35,43 @@ public class Main {
         pause(300);
 
         // ─── 2. London Scenario ────────────────────────────────────────────
-        logger.info("\n" + section("LONDON SCENARIO — Congestion Charge"));
+        logger.info("\n%s".formatted(section("LONDON SCENARIO — Congestion Charge")));
         londonScenario(controller);
 
         pause(500);
 
         // ─── 3. Milan Scenario ─────────────────────────────────────────────
-        logger.info("\n" + section("MILAN SCENARIO — Helmet Check for Moped"));
+        logger.info("\n%s".formatted(section("MILAN SCENARIO — Helmet Check for Moped")));
         milanScenario(controller);
 
         pause(500);
 
         // ─── 4. Rome Scenario ──────────────────────────────────────────────
-        logger.info("\n" + section("ROME SCENARIO — Zone Restrictions for Scooter"));
+        logger.info("\n%s".formatted(section("ROME SCENARIO — Zone Restrictions for Scooter")));
         romeScenario(controller);
 
         pause(500);
 
         // ─── 5. Telemetry Scenarios ────────────────────────────────────────
-        logger.info("\n" + section("TELEMETRY — Critical Temperature & Theft Alarm"));
+        logger.info("\n%s".formatted(section("TELEMETRY — Critical Temperature & Theft Alarm")));
         telemetryScenario(controller);
 
         pause(1500); // Give background telemetry thread time to process
 
         // ─── 6. Concurrency Test ───────────────────────────────────────────
-        logger.info("\n" + section("CONCURRENCY — Simultaneous Reservation Attempts"));
+        logger.info("\n%s".formatted(section("CONCURRENCY — Simultaneous Reservation Attempts")));
         concurrencyScenario(controller);
 
         pause(500);
 
         // ─── 7. Audit Verification ─────────────────────────────────────────
-        logger.info("\n" + section("AUDIT TRAIL — Chain Integrity Verification"));
+        logger.info("\n%s".formatted(section("AUDIT TRAIL — Chain Integrity Verification")));
         controller.printAuditLog();
         boolean valid = controller.verifyAuditChain();
-        logger.info("Audit chain valid: " + valid);
+        logger.info("Audit chain valid: %s".formatted(valid));
 
         // ─── 8. State Summary ──────────────────────────────────────────────
-        logger.info("\n" + section("FLEET STATUS SUMMARY"));
+        logger.info("\n%s".formatted(section("FLEET STATUS SUMMARY")));
         printFleetSummary(controller);
 
         // ─── Shutdown ──────────────────────────────────────────────────────
@@ -85,17 +85,17 @@ public class Main {
         try {
             logger.info("User U001 (Alice) reserves electric scooter LON-ES001 in London");
             Rental rental = c.reserveVehicle("U001", "LON-ES001");
-            logger.info("  → " + rental);
+            logger.info("  → %s".formatted(rental));
 
             logger.info("Alice starts her rental...");
             c.startRental(rental.getId(), "LON-ES001");
 
             logger.info("Alice ends her trip (congestion charge will be added)...");
             Payment payment = c.endRental(rental.getId(), "LON-ES001");
-            logger.info("  → " + payment);
+            logger.info("  → %s".formatted(payment));
 
         } catch (SmartMoveException e) {
-            logger.severe("London scenario error: " + e.getMessage());
+            logger.severe("London scenario error: %s".formatted(e.getMessage()));
         }
     }
 
@@ -105,14 +105,14 @@ public class Main {
         try {
             logger.info("User U003 (Carlos) reserves Moped MIL-M001 in Milan");
             Rental rental = c.reserveVehicle("U003", "MIL-M001");
-            logger.info("  → " + rental);
+            logger.info("  → %s".formatted(rental));
 
             logger.info("Carlos tries to start rental WITHOUT helmet...");
             try {
                 c.startRental(rental.getId(), "MIL-M001");
                 logger.info("  → ERROR: Should have been rejected!");
             } catch (SmartMoveException e) {
-                logger.info("  → CORRECTLY REJECTED: " + e.getMessage());
+                logger.info("  → CORRECTLY REJECTED: %s".formatted(e.getMessage()));
             }
 
             logger.info("Carlos puts on helmet (sensor confirms)...");
@@ -126,10 +126,10 @@ public class Main {
             logger.info("  → Rental started successfully!");
 
             Payment payment = c.endRental(rental.getId(), "MIL-M001");
-            logger.info("  → " + payment);
+            logger.info("  → %s".formatted(payment));
 
         } catch (SmartMoveException e) {
-            logger.severe("Milan scenario error: " + e.getMessage());
+            logger.severe("Milan scenario error: %s".formatted(e.getMessage()));
         }
     }
 
@@ -145,14 +145,14 @@ public class Main {
             logger.info("Checking: scooter heading toward Colosseum area (restricted zone)...");
             GeoCoordinate colosseumArea = new GeoCoordinate(41.8902, 12.4922);
             boolean allowed = c.checkGpsAllowed("ROM-ES002", colosseumArea);
-            logger.info("  → GPS check result: " + (allowed ? "ALLOWED" : "BLOCKED — emergency lock applied"));
+            logger.info("  → GPS check result: %s".formatted((allowed ? "ALLOWED" : "BLOCKED — emergency lock applied")));
 
             // Show the vehicle was locked
             Vehicle scooter = c.getVehicleRepo().findById("ROM-ES002").orElseThrow();
-            logger.info("  → Scooter state after GPS check: " + scooter.getState());
+            logger.info("  → Scooter state after GPS check: %s".formatted(scooter.getState()));
 
         } catch (SmartMoveException e) {
-            logger.severe("Rome scenario error: " + e.getMessage());
+            logger.severe("Rome scenario error: %s".formatted(e.getMessage()));
         }
     }
 
@@ -196,28 +196,28 @@ public class Main {
         // Make sure vehicle is available
         c.getVehicleRepo().findById(vehicleId).ifPresent(v -> {
             if (v.getState() != VehicleState.AVAILABLE) {
-                logger.info("  Note: " + vehicleId + " is " + v.getState() + ", resetting for test");
+                logger.info("  Note: %s".formatted(vehicleId + " is " + v.getState()) + ", resetting for test");
                 v.transitionTo(VehicleState.AVAILABLE);
             }
         });
 
-        logger.info("Two threads simultaneously trying to reserve " + vehicleId + "...");
+        logger.info("Two threads simultaneously trying to reserve %s".formatted(vehicleId + "..."));
 
         Thread t1 = new Thread(() -> {
             try {
                 Rental r = c.reserveVehicle("U004", vehicleId);
-                logger.info("  [Thread-1] SUCCESS: Elena reserved " + vehicleId + " → " + r.getId());
+                logger.info("  [Thread-1] SUCCESS: Elena reserved %s".formatted(vehicleId + " → " + r.getId()));
             } catch (SmartMoveException e) {
-                logger.info("  [Thread-1] REJECTED: " + e.getMessage());
+                logger.info("  [Thread-1] REJECTED: %s".formatted(e.getMessage()));
             }
         }, "Thread-1");
 
         Thread t2 = new Thread(() -> {
             try {
                 Rental r = c.reserveVehicle("U005", vehicleId);
-                logger.info("  [Thread-2] SUCCESS: James reserved " + vehicleId + " → " + r.getId());
+                logger.info("  [Thread-2] SUCCESS: James reserved %s".formatted(vehicleId + " → " + r.getId()));
             } catch (SmartMoveException e) {
-                logger.info("  [Thread-2] REJECTED: " + e.getMessage());
+                logger.info("  [Thread-2] REJECTED: %s".formatted(e.getMessage()));
             }
         }, "Thread-2");
 
@@ -232,8 +232,7 @@ public class Main {
         }
 
         c.getVehicleRepo().findById(vehicleId).ifPresent(v ->
-                logger.info("  Final state of " + vehicleId + ": " + v.getState()
-                        + " (only one reservation should have succeeded)"));
+                logger.info("%s (only one reservation should have succeeded)".formatted("  Final state of %s".formatted("%s: %s".formatted(vehicleId, v.getState())))));
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────

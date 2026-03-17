@@ -49,7 +49,7 @@ public class RomePolicy implements CityPolicy {
         if (telemetryData != null) {
             isAllowed(v, telemetryData.getGps());
         }
-        logger.info("[RomePolicy] Pre-unlock check passed for vehicle " + v.getId());
+        logger.info("[RomePolicy] Pre-unlock check passed for vehicle %s".formatted(v.getId()));
     }
 
     @Override

@@ -26,8 +26,8 @@ public class CriticalBatteryHandler implements TelemetryEventHandler {
         if (vehicle.getState() == VehicleState.IN_USE) {
             rentalTerminator.terminateEmergency(vehicle, "Critical battery");
         } else {
-            stateManager.sendToMaintenance(vehicle, 
-                    "Critical battery: " + vehicle.getBatteryPercent() + "%");
+            stateManager.sendToMaintenance(vehicle,
+                    "Critical battery: %d%%".formatted(vehicle.getBatteryPercent()));
         }
         
         EventBus.getInstance().publish(
