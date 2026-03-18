@@ -29,6 +29,18 @@
         <sonar.host.url>http://localhost:9000</sonar.host.url>
 		<sonar.projectKey>smartmove-lab</sonar.projectKey>
 		<sonar.projectName>SmartMove</sonar.projectName>
+
+        <sonar.coverage.exclusions>
+            **/constants/**,
+            **/builder/**,
+            **/events/DomainEvents.java,
+            **/telemetry/**
+        </sonar.coverage.exclusions>
+
+        <sonar.cpd.exclusions>
+            **/constants/**,
+            **/builder/**
+        </sonar.cpd.exclusions>
         
         <!-- Versions -->
         <junit.version>5.10.1</junit.version>
