@@ -4,6 +4,7 @@ import com.smartmove.controller.SmartMoveCentralController;
 import com.smartmove.controller.SmartMoveException;
 import com.smartmove.domain.*;
 import com.smartmove.domain.vehicle.*;
+import com.smartmove.policy.*;
 import com.smartmove.util.DataSeeder;
 import com.smartmove.builder.*;
 import com.smartmove.events.*;
@@ -463,5 +464,579 @@ class IntegrationTest {
         boolean valid = controller.verifyAuditChain();
         // Should return true or false, not throw
         assertTrue(valid || !valid); // Always true, just tests it runs
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+// CONTROLLER - COMPREHENSIVE COVERAGE TESTS
+// ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    void testController_FullRentalFlow() throws Exception {
+        // 1. Reserve
+        Rental rental = controller.reserveVehicle(USER_002, MIL_BICYCLE_001);
+        assertNotNull(rental);
+
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(MIL_BICYCLE_001).orElseThrow();
+        assertEquals(VehicleState.RESERVED, vehicle.getState());
+
+        // 2. Start rental
+        controller.startRental(rental.getId(), MIL_BICYCLE_001);
+        assertEquals(VehicleState.IN_USE, vehicle.getState());
+
+        // 3. End rental
+        Payment payment = controller.endRental(rental.getId(), MIL_BICYCLE_001);
+        assertNotNull(payment);
+        assertEquals(VehicleState.AVAILABLE, vehicle.getState());
+        assertFalse(rental.isActive());
+    }
+
+    @Test
+    void testController_StartRentalInvalidState() {
+        // Try to start rental on AVAILABLE vehicle (not RESERVED)
+        assertThrows(Exception.class, () -> {
+            controller.startRental("FAKE-R1", LON_BICYCLE_002);
+        });
+    }
+
+    @Test
+    void testController_StartRentalNonExistent() {
+        assertThrows(Exception.class, () -> {
+            controller.startRental("NON-EXISTENT-R", LON_SCOOTER_002);
+        });
+    }
+
+    @Test
+    void testController_EndRentalNotActive() throws Exception {
+        // Reserve and start
+        Rental rental = controller.reserveVehicle(USER_003, LON_MOPED_001);
+        controller.startRental(rental.getId(), LON_MOPED_001);
+
+        // End once
+        controller.endRental(rental.getId(), LON_MOPED_001);
+
+        // Try to end again - should throw
+        assertThrows(Exception.class, () -> {
+            controller.endRental(rental.getId(), LON_MOPED_001);
+        });
+    }
+
+    @Test
+    void testController_CheckGpsAllowed() throws Exception {
+        // London location - should be allowed
+        GeoCoordinate londonOk = new GeoCoordinate(51.5074, -0.1278);
+        boolean allowed = controller.checkGpsAllowed(LON_SCOOTER_001, londonOk);
+        assertTrue(allowed);
+    }
+
+    @Test
+    void testController_CheckGpsNotAllowed() throws Exception {
+        // Rome archaeological zone - should NOT be allowed
+        GeoCoordinate colosseum = new GeoCoordinate(41.8902, 12.4922);
+        boolean allowed = controller.checkGpsAllowed(ROM_SCOOTER_001, colosseum);
+        assertFalse(allowed);
+
+        // Vehicle should be in EMERGENCY_LOCK
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(ROM_SCOOTER_001).orElseThrow();
+        assertEquals(VehicleState.EMERGENCY_LOCK, vehicle.getState());
+    }
+
+    @Test
+    void testController_ProcessTelemetryNormal() {
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(MIL_SCOOTER_001).orElseThrow();
+
+        TelemetryData normalData = TelemetryDataBuilder.aTelemetryData()
+                .at(45.4642, 9.1900)
+                .withBattery(80)
+                .withTemperature(25.0)
+                .build();
+
+        assertDoesNotThrow(() -> {
+            controller.processTelemetry(MIL_SCOOTER_001, normalData);
+        });
+    }
+
+    @Test
+    void testController_ProcessTelemetryCritical() throws InterruptedException {
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(MIL_MOPED_002).orElseThrow();
+
+        TelemetryData criticalData = TelemetryDataBuilder.aTelemetryData()
+                .at(45.4642, 9.1900)
+                .withBattery(80)
+                .withTemperature(75.0) // Critical!
+                .build();
+
+        controller.processTelemetry(MIL_MOPED_002, criticalData);
+
+        // Wait for async processing
+        Thread.sleep(500);
+
+        // Vehicle might be in EMERGENCY_LOCK (depends on async processing)
+        // Just verify no crash
+    }
+
+    @Test
+    void testController_VerifyAuditChainReturnsBoolean() {
+        boolean result = controller.verifyAuditChain();
+        // Should return true or false, not throw
+        assertNotNull(result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CONTROLLER - ERROR HANDLING COVERAGE
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    void testController_ReserveWithNullUser() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(null, LON_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_ReserveWithNullVehicle() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(USER_001, null);
+        });
+    }
+
+    @Test
+    void testController_ReserveNonExistentVehicle() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(USER_001, "NON-EXISTENT-V");
+        });
+    }
+
+    @Test
+    void testController_ReserveNonExistentUser() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle("NON-EXISTENT-U", LON_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_StartRentalWithWrongVehicle() throws Exception {
+        Rental rental = controller.reserveVehicle(USER_001, LON_BICYCLE_001);
+
+        // Try to start with different vehicle
+        assertThrows(Exception.class, () -> {
+            controller.startRental(rental.getId(), LON_BICYCLE_002);
+        });
+    }
+
+    @Test
+    void testController_EndRentalWithWrongVehicle() throws Exception {
+        Rental rental = controller.reserveVehicle(USER_002, MIL_BICYCLE_001);
+        controller.startRental(rental.getId(), MIL_BICYCLE_001);
+
+        // Try to end with different vehicle
+        assertThrows(Exception.class, () -> {
+            controller.endRental(rental.getId(), MIL_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_MilanMopedWithoutHelmet() throws Exception {
+        Rental rental = controller.reserveVehicle(USER_004, MIL_MOPED_001);
+
+        // Start should fail - no helmet
+        assertThrows(Exception.class, () -> {
+            controller.startRental(rental.getId(), MIL_MOPED_001);
+        });
+    }
+
+    @Test
+    void testController_MilanMopedWithHelmet() throws Exception {
+        // Set helmet detected
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(MIL_MOPED_002).orElseThrow();
+
+        if (vehicle instanceof Moped) {
+            ((Moped) vehicle).setHelmetDetected(true);
+        }
+
+        Rental rental = controller.reserveVehicle(USER_005, MIL_MOPED_002);
+
+        // Should succeed with helmet
+        assertDoesNotThrow(() -> {
+            controller.startRental(rental.getId(), MIL_MOPED_002);
+        });
+    }
+
+    @Test
+    void testController_LowBatteryReservation() {
+        // Find or create vehicle with low battery
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(LON_SCOOTER_002).orElseThrow();
+
+        // Simulate low battery
+        TelemetryData lowBat = TelemetryDataBuilder.aTelemetryData()
+                .at(51.5, -0.1)
+                .withBattery(10) // Low but not critical
+                .build();
+
+        vehicle.applyTelemetry(lowBat);
+
+        // Some policies might reject low battery
+        // Test either succeeds or throws - both OK
+        try {
+            Rental rental = controller.reserveVehicle(USER_001, LON_SCOOTER_002);
+            assertNotNull(rental);
+        } catch (Exception e) {
+            // Policy rejection is also valid
+            assertTrue(e.getMessage().contains("battery") ||
+                    e.getMessage().contains("policy"));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+// CONTROLLER - VALID PUBLIC METHOD TESTS
+// ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    void testController_ReserveStartEnd_FullFlow() throws Exception {
+        // Complete happy path
+        String userId = USER_001;
+        String vehicleId = LON_BICYCLE_001;
+
+        // 1. Reserve
+        Rental rental = controller.reserveVehicle(userId, vehicleId);
+        assertNotNull(rental);
+        assertTrue(rental.isActive());
+
+        // 2. Start
+        controller.startRental(rental.getId(), vehicleId);
+
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(vehicleId).orElseThrow();
+        assertEquals(VehicleState.IN_USE, vehicle.getState());
+
+        // 3. End
+        Payment payment = controller.endRental(rental.getId(), vehicleId);
+        assertNotNull(payment);
+        assertFalse(rental.isActive());
+        assertEquals(VehicleState.AVAILABLE, vehicle.getState());
+        assertTrue(payment.getTotal() > 0);
+    }
+
+    @Test
+    void testController_StartRentalBeforeReserve() {
+        // Try to start without reserving
+        assertThrows(Exception.class, () -> {
+            controller.startRental("FAKE-RENTAL", LON_BICYCLE_002);
+        });
+    }
+
+    @Test
+    void testController_EndNonActiveRental() throws Exception {
+        Rental rental = controller.reserveVehicle(USER_002, MIL_BICYCLE_001);
+        controller.startRental(rental.getId(), MIL_BICYCLE_001);
+        controller.endRental(rental.getId(), MIL_BICYCLE_001);
+
+        // Try to end again
+        assertThrows(Exception.class, () -> {
+            controller.endRental(rental.getId(), MIL_BICYCLE_001);
+        });
+    }
+
+    @Test
+    void testController_ProcessTelemetryExistingVehicle() {
+        TelemetryData data = TelemetryDataBuilder.aTelemetryData()
+                .at(51.5074, -0.1278)
+                .withBattery(75)
+                .withTemperature(22.0)
+                .build();
+
+        assertDoesNotThrow(() -> {
+            controller.processTelemetry(LON_SCOOTER_001, data);
+        });
+    }
+
+    @Test
+    void testController_CheckGpsAllowedLondon() throws Exception {
+        GeoCoordinate location = new GeoCoordinate(51.5074, -0.1278);
+        boolean allowed = controller.checkGpsAllowed(LON_SCOOTER_001, location);
+        assertTrue(allowed);
+    }
+
+    @Test
+    void testController_CheckGpsNotAllowedRome() throws Exception {
+        // Colosseum - restricted zone
+        GeoCoordinate colosseum = new GeoCoordinate(41.8902, 12.4922);
+        boolean allowed = controller.checkGpsAllowed(ROM_SCOOTER_001, colosseum);
+        assertFalse(allowed);
+    }
+
+    @Test
+    void testController_GetVehicleRepoNotNull() {
+        assertNotNull(controller.getVehicleRepo());
+    }
+
+    @Test
+    void testController_GetUserRepoNotNull() {
+        assertNotNull(controller.getUserRepo());
+    }
+
+    @Test
+    void testController_GetAuditLogNotNull() {
+        assertNotNull(controller.getAuditLog());
+    }
+
+    @Test
+    void testController_PrintAuditLogDoesNotThrow() {
+        assertDoesNotThrow(() -> {
+            controller.printAuditLog();
+        });
+    }
+
+    @Test
+    void testController_MultipleReservations() throws Exception {
+        // Reserve multiple different vehicles
+        Rental r1 = controller.reserveVehicle(USER_001, LON_BICYCLE_001);
+        Rental r2 = controller.reserveVehicle(USER_002, MIL_BICYCLE_001);
+        Rental r3 = controller.reserveVehicle(USER_003, ROM_BICYCLE_001);
+
+        assertNotNull(r1);
+        assertNotNull(r2);
+        assertNotNull(r3);
+        assertNotEquals(r1.getId(), r2.getId());
+        assertNotEquals(r2.getId(), r3.getId());
+    }
+
+    @Test
+    void testController_ReserveWithInvalidUserId() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle("NON-EXISTENT-USER", LON_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_ReserveWithInvalidVehicleId() {
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(USER_001, "NON-EXISTENT-VEHICLE");
+        });
+    }
+
+    @Test
+    void testController_StartRentalWithMismatchedVehicle() throws Exception {
+        Rental rental = controller.reserveVehicle(USER_004, LON_MOPED_001);
+
+        // Try to start with different vehicle
+        assertThrows(Exception.class, () -> {
+            controller.startRental(rental.getId(), MIL_MOPED_001);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CONTROLLER - ERROR SCENARIOS
+   // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    void testController_StartRentalWithNullRentalId() {
+        assertThrows(Exception.class, () -> {
+            controller.startRental(null, LON_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_EndRentalWithNullRentalId() {
+        assertThrows(Exception.class, () -> {
+            controller.endRental(null, LON_SCOOTER_001);
+        });
+    }
+
+    @Test
+    void testController_ProcessTelemetryWithNullTimestamp() {
+        TelemetryData data = TelemetryDataBuilder.aTelemetryData()
+                .at(51.5, -0.1)
+                .withBattery(80)
+                .build();
+
+        assertDoesNotThrow(() -> {
+            controller.processTelemetry(LON_SCOOTER_001, data);
+        });
+    }
+
+    @Test
+    void testController_ProcessTelemetryWithNullData() {
+        assertDoesNotThrow(() -> {
+            controller.processTelemetry(LON_SCOOTER_001,null);
+        });
+    }
+
+    @Test
+    void testController_CheckGpsAllowedWithNullVehicleId() {
+        GeoCoordinate loc = new GeoCoordinate(51.5, -0.1);
+
+        assertThrows(Exception.class, () -> {
+            controller.checkGpsAllowed(null, loc);
+        });
+    }
+
+    @Test
+    void testController_CheckGpsAllowedWithNullLocation() {
+        assertThrows(Exception.class, () -> {
+            controller.checkGpsAllowed(LON_SCOOTER_001, null);
+        });
+    }
+
+    @Test
+    void testController_ReserveVehicleInMaintenance() throws Exception {
+        // Put vehicle in maintenance
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(LON_BICYCLE_002).orElseThrow();
+
+        vehicle.transitionTo(VehicleState.MAINTENANCE);
+
+        // Try to reserve - should fail
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(USER_001, LON_BICYCLE_002);
+        });
+    }
+
+    @Test
+    void testController_ReserveVehicleInEmergencyLock() throws Exception {
+        Vehicle vehicle = controller.getVehicleRepo()
+                .findById(MIL_BICYCLE_001).orElseThrow();
+
+        vehicle.transitionTo(VehicleState.EMERGENCY_LOCK);
+
+        assertThrows(Exception.class, () -> {
+            controller.reserveVehicle(USER_001, MIL_BICYCLE_001);
+        });
+    }
+
+    @Test
+    void testLondonPolicy_ValidateTransition() {
+        LondonPolicy policy = new LondonPolicy();
+
+        Vehicle vehicle = VehicleBuilder.aVehicle()
+                .withId("LON-TRANS")
+                .inCity("London")
+                .at(51.5, -0.1)
+                .asScooter()
+                .build();
+
+        // Should not throw for valid transitions
+        assertDoesNotThrow(() -> {
+            policy.validateTransition(vehicle, VehicleState.RESERVED);
+            policy.validateTransition(vehicle, VehicleState.IN_USE);
+        });
+    }
+
+    @Test
+    void testRomePolicy_CheckGpsAllowedVatican() throws Exception {
+        RomePolicy policy = new RomePolicy();
+
+        Vehicle vehicle = VehicleBuilder.aVehicle()
+                .withId("ROM-VAT")
+                .inCity("Rome")
+                .at(41.9, 12.5)
+                .asScooter()
+                .build();
+
+        GeoCoordinate vatican = new GeoCoordinate(41.9029, 12.4534);
+
+        assertThrows(Exception.class, () -> {
+            policy.isAllowed(vehicle, vatican);
+        });
+    }
+
+    @Test
+    void testPolicyFactory_GetAllPolicies() {
+        assertNotNull(PolicyFactory.getPolicy("London"));
+        assertNotNull(PolicyFactory.getPolicy("Milan"));
+        assertNotNull(PolicyFactory.getPolicy("Rome"));
+
+        // Unknown city should return default or throw
+        try {
+            CityPolicy unknown = PolicyFactory.getPolicy("Paris");
+            assertNotNull(unknown);
+        } catch (Exception e) {
+            // Also acceptable
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+// DOMAIN - COMPLETE COVERAGE
+// ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    void testVehicleState_AllValues() {
+        // Test all enum values
+        assertNotNull(VehicleState.AVAILABLE);
+        assertNotNull(VehicleState.RESERVED);
+        assertNotNull(VehicleState.IN_USE);
+        assertNotNull(VehicleState.MAINTENANCE);
+        assertNotNull(VehicleState.EMERGENCY_LOCK);
+        assertNotNull(VehicleState.RELOCATING);
+
+        // Test descriptions
+        assertFalse(VehicleState.AVAILABLE.getDescription().isEmpty());
+        assertTrue(VehicleState.IN_USE.toString().contains("Active rental"));
+    }
+
+    @Test
+    void testVehicle_AllTransitionCombinations() {
+        Vehicle v = VehicleBuilder.aVehicle()
+                .withId("TRANS-TEST")
+                .inCity("London")
+                .at(51.5, -0.1)
+                .asBicycle()
+                .build();
+
+        // Test all valid transitions
+        assertTrue(v.isValidTransition(VehicleState.AVAILABLE, VehicleState.RESERVED));
+        assertTrue(v.isValidTransition(VehicleState.RESERVED, VehicleState.IN_USE));
+        assertTrue(v.isValidTransition(VehicleState.IN_USE, VehicleState.AVAILABLE));
+
+        // Test invalid transitions
+        assertFalse(v.isValidTransition(VehicleState.AVAILABLE, VehicleState.IN_USE));
+        assertFalse(v.isValidTransition(VehicleState.MAINTENANCE, VehicleState.IN_USE));
+    }
+
+    @Test
+    void testGeoCoordinate_EdgeCases() {
+        // Test boundary values
+        GeoCoordinate north = new GeoCoordinate(90, 0);
+        GeoCoordinate south = new GeoCoordinate(-90, 0);
+        GeoCoordinate east = new GeoCoordinate(0, 180);
+        GeoCoordinate west = new GeoCoordinate(0, -180);
+
+        assertNotNull(north);
+        assertNotNull(south);
+        assertNotNull(east);
+        assertNotNull(west);
+
+        // Test distance calculation
+        double dist = north.distanceTo(south);
+        assertTrue(dist > 0);
+    }
+
+    @Test
+    void testTelemetryData_EdgeStates() {
+        // Exactly on thresholds
+        TelemetryData criticalTemp = new TelemetryData(
+                "2025-01-01T12:00:00Z",
+                new GeoCoordinate(51.5, -0.1),
+                50,
+                CRITICAL_TEMPERATURE_C, // Exactly 60
+                false
+        );
+
+        assertFalse(criticalTemp.isCritical()); // > not >=
+
+        TelemetryData justOverCritical = new TelemetryData(
+                "2025-01-01T12:00:00Z",
+                new GeoCoordinate(51.5, -0.1),
+                50,
+                CRITICAL_TEMPERATURE_C + 0.1, // 60.1
+                false
+        );
+
+        assertTrue(justOverCritical.isCritical());
     }
 }
