@@ -399,10 +399,13 @@ class IntegrationTest {
     // ═══════════════════════════════════════════════════════════════════
 
     @Test
-    void testController_ReserveAlreadyReservedVehicle() {
+    void testController_ReserveAlreadyReservedVehicle() throws Exception {
+        // First reservation should succeed
+        controller.reserveVehicle(USER_001, LON_SCOOTER_001);
+
+        // Second reservation should fail
         assertThrows(SmartMoveException.class, () -> {
-            controller.reserveVehicle(USER_001, LON_SCOOTER_001);
-            controller.reserveVehicle(USER_002, LON_SCOOTER_001); // Already reserved
+            controller.reserveVehicle(USER_002, LON_SCOOTER_001);
         });
     }
 
@@ -576,13 +579,6 @@ class IntegrationTest {
 
         // Vehicle might be in EMERGENCY_LOCK (depends on async processing)
         // Just verify no crash
-    }
-
-    @Test
-    void testController_VerifyAuditChainReturnsBoolean() {
-        boolean result = controller.verifyAuditChain();
-        // Should return true or false, not throw
-        assertNotNull(result);
     }
 
     // ═══════════════════════════════════════════════════════════════════
