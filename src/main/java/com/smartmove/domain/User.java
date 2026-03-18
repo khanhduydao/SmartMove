@@ -1,10 +1,22 @@
 package com.smartmove.domain;
 
-public class User {
+import com.smartmove.config.DomainValidator;
+
+/**
+ * User entity.
+ */
+public final class User {
     private final String id;
     private final String name;
 
     public User(String id, String name) {
+        DomainValidator.validateUserId(id);
+        DomainValidator.requireNonNull(name, "User name cannot be null");
+        
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("User name cannot be blank");
+        }
+        
         this.id = id;
         this.name = name;
     }
@@ -13,5 +25,5 @@ public class User {
     public String getName() { return name; }
 
     @Override
-    public String toString() { return "User[" + id + ", " + name + "]"; }
+    public String toString() { return String.format("User[%s, %s]", id, name); }
 }

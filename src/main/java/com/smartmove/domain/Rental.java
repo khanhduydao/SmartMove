@@ -1,6 +1,11 @@
 package com.smartmove.domain;
 
-public class Rental {
+import com.smartmove.config.DomainValidator;
+
+/**
+ * Rental entity representing a vehicle rental session.
+ */
+public final class Rental {
     private final String id;
     private final String userId;
     private final String vehicleId;
@@ -9,6 +14,11 @@ public class Rental {
     private volatile boolean active;
 
     public Rental(String id, String userId, String vehicleId, String startTime) {
+        DomainValidator.requireNonNull(id, "Rental ID cannot be null");
+        DomainValidator.validateUserId(userId);
+        DomainValidator.validateVehicleId(vehicleId);
+        DomainValidator.requireNonNull(startTime, "Start time cannot be null");
+        
         this.id = id;
         this.userId = userId;
         this.vehicleId = vehicleId;
@@ -23,7 +33,8 @@ public class Rental {
     public String getEndTime() { return endTime; }
     public boolean isActive() { return active; }
 
-    public void end(String endTime) {
+    public synchronized void end(String endTime) {
+        DomainValidator.requireNonNull(endTime, "End time cannot be null");
         this.endTime = endTime;
         this.active = false;
     }

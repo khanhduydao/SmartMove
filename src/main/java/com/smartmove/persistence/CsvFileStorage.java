@@ -1,5 +1,7 @@
 package com.smartmove.persistence;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -9,6 +11,7 @@ import java.util.*;
  * Subclasses implement toCsv() and fromCsv() for their specific type.
  */
 public abstract class CsvFileStorage<T> implements FileStorage<T> {
+    private static final Logger logger = LoggerFactory.getLogger(CsvFileStorage.class);
 
     protected final String filePath;
     protected final String header;
@@ -35,11 +38,11 @@ public abstract class CsvFileStorage<T> implements FileStorage<T> {
                     T item = fromCsv(line);
                     if (item != null) results.add(item);
                 } catch (Exception e) {
-                    System.err.println("[CsvStorage] Failed to parse line in " + filePath + ": " + line);
+                    logger.severe("[CsvStorage] Failed to parse line in %s".formatted(filePath + ": " + line));
                 }
             }
         } catch (IOException e) {
-            System.err.println("[CsvStorage] Failed to load " + filePath + ": " + e.getMessage());
+            logger.severe("[CsvStorage] Failed to load %s".formatted(filePath + ": " + e.getMessage()));
         }
         return results;
     }
@@ -60,7 +63,7 @@ public abstract class CsvFileStorage<T> implements FileStorage<T> {
                 writer.flush();
             }
         } catch (IOException e) {
-            System.err.println("[CsvStorage] Failed to save " + filePath + ": " + e.getMessage());
+            logger.severe("[CsvStorage] Failed to save %s".formatted(filePath + ": " + e.getMessage()));
         }
     }
 

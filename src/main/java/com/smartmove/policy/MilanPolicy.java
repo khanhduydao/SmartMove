@@ -1,5 +1,8 @@
 package com.smartmove.policy;
 
+import com.smartmove.config.LoggerFactory;
+import java.util.logging.Logger;
+import static com.smartmove.constants.SmartMoveConstants.*;
 import com.smartmove.domain.GeoCoordinate;
 import com.smartmove.domain.Rental;
 import com.smartmove.domain.TelemetryData;
@@ -12,20 +15,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MilanPolicy implements CityPolicy {
-
-    private static final double CITY_CENTER_SURCHARGE = 1.50;
-
+    private static final Logger logger = LoggerFactory.getLogger(MilanPolicy.class);
     private static final List<Zone> RESTRICTED_ZONES = new ArrayList<>();
     private static final Zone CITY_CENTER_ZONE;
 
     static {
-        // ZTL (Zona a Traffico Limitato) areas in Milan
         RESTRICTED_ZONES.add(new Zone("MIL_ZTL_CENTRO",
                 new GeoCoordinate(45.4642, 9.1900), 1200, true));
         RESTRICTED_ZONES.add(new Zone("MIL_PROTECTED_PARCO",
                 new GeoCoordinate(45.4773, 9.1878), 600, true));
 
-        // City center zone for higher pricing
         CITY_CENTER_ZONE = new Zone("MIL_CITY_CENTER",
                 new GeoCoordinate(45.4654, 9.1866), 2000, false);
     }
@@ -33,16 +32,15 @@ public class MilanPolicy implements CityPolicy {
     @Override
     public void beforeUnlock(Vehicle v, TelemetryData telemetryData, Rental rental)
             throws PolicyViolationException {
-        // Milan: Mopeds require helmet sensor confirmation before unlocking
         if (v instanceof Moped) {
             if (telemetryData == null || !telemetryData.isHelmetPresent()) {
                 throw new PolicyViolationException(
                         "Milan policy: Helmet not detected! Moped " + v.getId()
                                 + " cannot be unlocked without confirmed helmet presence.");
             }
-            System.out.println("[MilanPolicy] Helmet confirmed for Moped " + v.getId());
+            logger.info(() -> "[MilanPolicy] Helmet confirmed for Moped " + v.getId());
         }
-        if (v.getBatteryPercent() < 15) {
+        if (v.getBatteryPercent() < MILAN_MIN_BATTERY_PERCENT) {
             throw new PolicyViolationException(
                     "Milan policy: battery too low (" + v.getBatteryPercent() + "%)");
         }
@@ -51,8 +49,7 @@ public class MilanPolicy implements CityPolicy {
     @Override
     public double afterTrip(Rental rental, double baseAmount) throws PolicyViolationException {
         double surcharge = 0.0;
-        // No city-specific surcharge by default, but city center adds extra
-        System.out.printf("[MilanPolicy] Base trip cost: %.2f%n", baseAmount);
+        logger.info(() -> String.format("[MilanPolicy] Base trip cost: %.2f", baseAmount));
         return surcharge;
     }
 
@@ -85,5 +82,5 @@ public class MilanPolicy implements CityPolicy {
         return CITY_CENTER_ZONE.contains(gps);
     }
 
-    public double getCityCenterSurcharge() { return CITY_CENTER_SURCHARGE; }
+    public double getCityCenterSurcharge() { return MILAN_CITY_CENTER_SURCHARGE; }
 }
