@@ -102,6 +102,8 @@ public class TelemetryMonitor implements Runnable {
 
     public boolean isRunning() { return running.get(); }
 
+    public int getQueueSize() { return telemetryQueue.size(); }
+
     // ─── Inner record ───────────────────────────────────────────────
 
     private record TelemetryUpdate(
